@@ -9,6 +9,9 @@
 // #include <furi_hal_resources.h>
 // #include <locale/locale.h>
 // #include "si4735_app.h"
+#include <furi_hal_i2c.h>
+
+#define TAG "si4735_device"
 
 struct si4735App {
     Gui* gui;
