@@ -13,17 +13,34 @@
 #define SYNC_MODE 3
 
 static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
-    UNUSED(ctx);
+    // UNUSED(ctx);
+    furi_assert(ctx);
+    si4735App* app = ctx;
 
     canvas_clear(canvas);
 
     // canvas_draw_icon(canvas, 0, 29, &I_amperka_ru_logo_128x35px);
 
-    canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 4, 8, "RUN");
+    // canvas_set_font(canvas, FontPrimary);
+    // canvas_draw_str(canvas, 4, 8, "RUN");
 
     // canvas_set_font(canvas, FontSecondary);
     // elements_multiline_text_aligned(canvas, 127, 15, AlignRight, AlignTop, "Some long long long long \n aligned multiline text");
+
+    // uint16_t freq_khz;
+    // app->freq_khz = 9920;
+    char string[30];
+    snprintf(string, 10, "%d", app->freq_khz * app->multiplier_freq); // app->freq_khz // app->multiplier_freq
+    // FURI_LOG_I(TAG, string);
+    canvas_set_font(canvas, FontBigNumbers);
+    canvas_draw_str(canvas, 4, 16, string);
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 64, 16, "kHz");
+    canvas_set_font(canvas, FontSecondary);
+    snprintf(string, 30, "SNR:%2ddB SI: %2duVdB", app->snr, app->rssi);
+    canvas_draw_str(canvas, 4, 26, string);
+    snprintf(string, 30, "status x%x %dKHz   ", app->status, app->coef * app->n);
+    canvas_draw_str(canvas, 4, 36, string);
 }
 
 static void si4735_app_input_callback(InputEvent* input_event, void* ctx) {
@@ -40,7 +57,7 @@ si4735App* si4735_app_alloc() {
 
     app->event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
 
-    view_port_draw_callback_set(app->view_port, si4735_app_draw_callback, NULL);
+    view_port_draw_callback_set(app->view_port, si4735_app_draw_callback, app); // NULL // app
     view_port_input_callback_set(app->view_port, si4735_app_input_callback, app->event_queue);
 
     app->gui = furi_record_open(RECORD_GUI);
@@ -71,26 +88,37 @@ int32_t si4735_app(void *p) {
     UNUSED(p);
     si4735App* app = si4735_app_alloc();
 
+    uint8_t status=0xff,rev,snr,rssi,resp1,resp2;
+    UNUSED(resp1);
+    UNUSED(resp2);
+    UNUSED(rev);
+    int16_t bfo=0;
+    uint8_t freq_of; // int8_t freq_of
     // furi_delay_ms(10000);
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
     // si4734_fm_mode(); // просто запускает кварц
-    reciver_set_mode(__FM_MODE);
+    reciver_set_mode(app, __FM_MODE);
 
     InputEvent event;
 
     while (1) {
+        show_freq(app, app->freq_khz, app->offset);
+        get_recivier_signal_status(&snr,&rssi,&freq_of);
+        show_reciver_full_status(app, app->freq_khz,bfo,snr,rssi,status);
         // furi_hal_gpio_write(app->output_pin, app->output_value);
 
         if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
             if (event.type == InputTypePress) {
                 if (event.key == InputKeyBack){
-                    si4734_powerdown();
+                    // si4734_powerdown();
                     break;
                 }else if(event.key == InputKeyUp){
                     si4734_volume(7);//громче
                 }else if(event.key == InputKeyDown){
                     si4734_volume(-7);//тише
+                }else if(event.key == InputKeyOk){
+                    // show_freq(9920, 0);
                 }
             } 
         }

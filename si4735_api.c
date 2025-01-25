@@ -62,14 +62,14 @@ uint8_t si4734_fm_mode(){
 
     furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
 
-	bool status_b = false;
+	// bool status_b = false;
     // status_b = furi_hal_i2c_tx(&furi_hal_i2c_handle_external, SI4734ADR, cmd, 3, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,3,0,0);
 	// status_b = furi_hal_i2c_write_reg_8(&furi_hal_i2c_handle_external, SI4734ADR, POWER_UP, 0x10, timeout);
 	// FURI_LOG_I(TAG, "status_b: %b", status_b);
 	// status_b = furi_hal_i2c_write_reg_8(&furi_hal_i2c_handle_external, SI4734ADR, POWER_UP, 0x05, timeout);
 	// FURI_LOG_I(TAG, "status_b: %b", status_b);
-	status_b = furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 3, timeout);
-	FURI_LOG_I(TAG, "status_b: %b", status_b);
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 3, timeout);
+	// FURI_LOG_I(TAG, "status_b: %b", status_b);
 	furi_delay_ms(1000); // furi_delay_ms(1000); // delay(1000);
 #if 1	
     do{ 
@@ -130,12 +130,12 @@ uint8_t si4734_set_prop(uint16_t prop, uint16_t val){
 	return status;
 }
 
-void reciver_set_mode(uint8_t rec_mod){
+void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 	static uint16_t amfreq=15200,fmfreq=9920;//запоминаем старое значение // 8910
 	
 	si4734_powerdown();
 								//частоты
-	if(reciver_mode==_FM_MODE)fmfreq=encoder; else amfreq=encoder;
+	if(reciver_mode==_FM_MODE)fmfreq=app->freq_khz; else amfreq=encoder;
 	if(rec_mod==_AM_MODE){
 		//o_printf("AM mode\n");
 		reciver_mode=_AM_MODE;
@@ -152,6 +152,7 @@ void reciver_set_mode(uint8_t rec_mod){
 		bfo=bfo%1000;
 		si4734_am_set_freq(encoder);
 		coef=1;
+		app->coef=coef;
 		encoder_mode=0;
 	} else if(rec_mod==_FM_MODE){
 		//oled_clear();
@@ -162,10 +163,12 @@ void reciver_set_mode(uint8_t rec_mod){
 		si4734_set_prop(RX_VOLUME, vol);
 		MIN_LIMIT=6000;
 		MAX_LIMIT=11100;
-		coef=1;
+		coef=1; // coef=1;
+		app->coef=coef;
 		//encoder=8910;
-		encoder=fmfreq;
-		si4734_fm_set_freq(encoder);
+		// encoder=fmfreq;
+		app->freq_khz = fmfreq;
+		si4734_fm_set_freq(app->freq_khz); // encoder
 		encoder_mode=0;
 		//-----RDS-----
 		// uint8_t status = 0;
@@ -198,6 +201,7 @@ void reciver_set_mode(uint8_t rec_mod){
 		encoder=amfreq;
 		si4734_ssb_set_freq(encoder);
 		coef=1;
+		app->coef=coef;
 		encoder_mode=0;
 	}
 }
@@ -413,4 +417,154 @@ uint16_t si4734_get_prop(uint16_t prop){
 	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
 
 	return (answer[2]<<8)|answer[3];
+}
+
+void show_freq(si4735App* app, uint16_t freq, int16_t offset){
+	//NB колонки в пиксилях, а строки по 8 пикселей, отсчёт с нуля из
+	//верхнего левого угла
+	uint16_t offset_hz;
+	UNUSED(offset_hz);
+	uint16_t freq_khz;
+	// char buff[30];
+	if(reciver_mode==_FM_MODE){
+		// o_printf_at(18*5,1,1,0,"x10");
+		app->multiplier_freq = 10;
+		// sprintf(buff, "x10\r\n");
+		// FURI_LOG_I(TAG, "x10");
+	}
+	else{ 
+		app->multiplier_freq = 1;
+		// o_printf_at(18*5,1,1,0,"   ");
+		// sprintf(buff, "   \r\n");
+	}
+	// usart_transmit(&tx_rb, buff);
+	//Вся эта канитель от того что bfo работает не как описанно в 
+	//в даташите f=f-bfo а f=f-bfo
+	if(reciver_mode==_SSB_MODE){
+		offset_hz=(1000-offset%1000)%1000;
+		freq_khz=freq-offset/1000;
+		if(offset%1000>0)freq_khz--;
+		// o_printf_at(18*5,3,1,0,"%03d",offset_hz);
+		// sprintf(buff, "%03d\r\n", offset_hz);
+		// usart_transmit(&tx_rb, buff);
+		// o_printf_at(0,1,3,0,"%5d",freq_khz);
+		// sprintf(buff, "%5d\r\n", freq_khz);
+		// usart_transmit(&tx_rb, buff);
+	}
+	else{
+		// o_printf_at(18*5,3,1,0,"   ");
+		// sprintf(buff, "   \r\n");
+		// usart_transmit(&tx_rb, buff);
+		// o_printf_at(0,1,3,0,"%5d",freq);
+		app->freq_khz=freq;
+		// sprintf(buff, "%5d\r\n", freq);
+		// usart_transmit(&tx_rb, buff);
+		// FURI_LOG_I(TAG, "%5d", freq);
+		}
+
+	// o_printf_at(18*5,2,1,0,"KHz");
+	// sprintf(buff, "KHz\r\n");
+	// usart_transmit(&tx_rb, buff);
+	
+}
+
+uint8_t get_recivier_signal_status(uint8_t *snr,uint8_t *rssi,uint8_t *freq_of){
+	uint8_t status,resp1,resp2;
+	switch(reciver_mode){
+		case _AM_MODE: status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
+			break;
+		case _FM_MODE: status=si4734_fm_signal_status(rssi,snr,freq_of);
+			break;
+		case _SSB_MODE: status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
+			break;
+		default:
+			status=0xff;
+			break;
+		}
+	return status;
+}
+
+uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,uint8_t *freq_of){
+	uint8_t cmd[3]={FM_RSQ_STATUS,0x1};
+	uint8_t tray=0;
+	uint8_t answer[8];
+	uint32_t timeout = 100;
+
+	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
+
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 2, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,2,0,0);
+	delay(50);
+	answer[0]=0;
+	while(answer[0]==0){
+		furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), answer, 8, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,answer,8);
+		tray++;
+		if(tray==255) {
+			furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+			return 0xff;
+		}
+		delay(50);
+	}
+
+	*rssi=answer[4];
+	*snr=answer[5];
+	*freq_of=answer[7];
+
+	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+
+	return answer[0];
+	
+}
+
+uint8_t si4734_am_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr){
+	uint8_t cmd[3]={AM_RSQ_STATUS,0x1};
+	uint8_t tray=0;
+	uint8_t answer[6];
+	uint32_t timeout = 100;
+
+	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
+
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 2, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,2,0,0);
+
+	delay(50);
+	answer[0]=0;
+	while(answer[0]==0){
+		furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), answer, 6, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,answer,6);
+		tray++;
+		if(tray==255) {
+			furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+			return 0xff;
+		}
+		delay(50);
+		}
+	*resp1=answer[1];
+	*resp2=answer[2];
+	*rssi=answer[4];
+	*snr=answer[5];
+
+	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+
+	return answer[0];
+	}
+
+void show_reciver_status(si4735App* app, uint8_t snr, uint8_t rssi, uint8_t status){
+	uint8_t n=1;
+	//o_printf_at(1,4,1,0,"SNR:%2ddB SI: %2duVdB",snr,rssi);
+	app->snr=snr;
+	app->rssi=rssi;
+	// char buff[30];
+	// sprintf(buff, "SNR:%2ddB SI: %2duVdB\r\n",snr,rssi);
+	// usart_transmit(&tx_rb, buff);
+	//coef - глобальная переменная
+	//n поправочный коэфициэнт шага
+	if(reciver_mode==_FM_MODE)n=10;
+	app->n=n;
+	//o_printf_at(1,5,1,0,"status x%x %dKHz   ",status,coef*n);
+	app->status=status;
+	// sprintf(buff, "status x%x %dKHz   \r\n",status,coef*n);
+	// usart_transmit(&tx_rb, buff);
+}	
+
+void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset,uint8_t snr, uint8_t rssi, uint8_t status){
+	show_freq(app, freq, offset);
+	show_reciver_status(app, snr,rssi,status);
 }

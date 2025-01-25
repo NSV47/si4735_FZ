@@ -24,6 +24,15 @@ struct si4735App {
 
     // bool input_value;
     bool output_value;
+
+    uint16_t freq_khz;
+    uint8_t multiplier_freq;
+    uint16_t offset;
+    uint8_t snr;
+    uint8_t rssi;
+    uint8_t status;
+    uint8_t n;
+    uint16_t coef;
 };
 
 typedef struct si4735App si4735App;
@@ -182,14 +191,19 @@ uint8_t si4734_fm_mode();
 uint8_t si4734_ssb_patch_mode(const uint8_t *patch);
 uint8_t si4734_fm_set_freq(uint16_t freq_10khz);
 uint8_t si4734_get_freq(uint16_t *freq,uint8_t *snr, uint8_t *rssi);
-uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,int8_t *freq_of);
+uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,uint8_t *freq_of); // int8_t *freq_of
 uint8_t si4734_get_rev(void);
 uint8_t si4734_am_set_freq(uint16_t freq_khz);
 uint8_t si4734_ssb_set_freq(uint16_t freq_khz);
-void reciver_set_mode(uint8_t rec_mod);
+void reciver_set_mode(si4735App* app, uint8_t rec_mod);
 uint8_t si4735_RDS_set_interrupt();
 uint8_t si4735_Configures_RDS_setting();
 uint8_t si4735_RDS_set_group();
 void si4734_volume(int8_t dv);
+void show_freq(si4735App* app, uint16_t freq, int16_t offset);
+uint8_t get_recivier_signal_status(uint8_t *snr,uint8_t *rssi,uint8_t *freq_of);
+uint8_t si4734_am_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr);
+void show_reciver_status(si4735App* app, uint8_t snr, uint8_t rssi, uint8_t status);
+void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset, uint8_t snr, uint8_t rssi, uint8_t status);
 
 // #endif
