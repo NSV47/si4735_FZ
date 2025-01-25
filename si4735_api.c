@@ -390,3 +390,27 @@ uint8_t si4734_powerdown(){
 	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
 	return status;
 }
+
+void si4734_volume(int8_t dv){
+	int16_t vol=si4734_get_prop(0x4000);//AN332 p170
+	vol+=dv;
+	if(vol<0)vol=0;
+	if(vol>0x3f)vol=0x3f;
+	si4734_set_prop(0x4000,vol);
+}
+
+uint16_t si4734_get_prop(uint16_t prop){
+	uint8_t cmd[4]={GET_PROPERTY,0,(prop>>8),(prop&0xff)};
+	uint8_t answer[4];
+	uint32_t timeout = 100;
+
+	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
+
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 4, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,4,0,0);
+	delay(100);
+	furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), answer, 4, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,answer,4);
+
+	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+
+	return (answer[2]<<8)|answer[3];
+}

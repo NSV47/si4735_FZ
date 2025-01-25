@@ -87,8 +87,12 @@ int32_t si4735_app(void *p) {
                 if (event.key == InputKeyBack){
                     si4734_powerdown();
                     break;
+                }else if(event.key == InputKeyUp){
+                    si4734_volume(7);//громче
+                }else if(event.key == InputKeyDown){
+                    si4734_volume(-7);//тише
                 }
-            }
+            } 
         }
     }
 

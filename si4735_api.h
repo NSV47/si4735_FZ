@@ -190,5 +190,6 @@ void reciver_set_mode(uint8_t rec_mod);
 uint8_t si4735_RDS_set_interrupt();
 uint8_t si4735_Configures_RDS_setting();
 uint8_t si4735_RDS_set_group();
+void si4734_volume(int8_t dv);
 
 // #endif
