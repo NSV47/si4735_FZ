@@ -7,6 +7,11 @@
 
 #include <input/input.h>
 
+#define AM_MODE 0
+#define __FM_MODE 1
+#define __SSB_MODE 2
+#define SYNC_MODE 3
+
 static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     UNUSED(ctx);
 
@@ -69,7 +74,8 @@ int32_t si4735_app(void *p) {
     // furi_delay_ms(10000);
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
-    si4734_fm_mode();
+    // si4734_fm_mode(); // просто запускает кварц
+    reciver_set_mode(__FM_MODE);
 
     InputEvent event;
 
@@ -78,8 +84,10 @@ int32_t si4735_app(void *p) {
 
         if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
             if (event.type == InputTypePress) {
-                if (event.key == InputKeyBack)
+                if (event.key == InputKeyBack){
+                    si4734_powerdown();
                     break;
+                }
             }
         }
     }

@@ -179,12 +179,16 @@ uint8_t si4734_set_prop(uint16_t prop, uint16_t val);
 uint8_t si4734_get_int_status();
 void si4734_am_seek(uint16_t freq,uint8_t up);
 uint8_t si4734_fm_mode();
-uint8_t si4734_ssb_patch_mode(uint8_t *patch);
+uint8_t si4734_ssb_patch_mode(const uint8_t *patch);
 uint8_t si4734_fm_set_freq(uint16_t freq_10khz);
 uint8_t si4734_get_freq(uint16_t *freq,uint8_t *snr, uint8_t *rssi);
 uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,int8_t *freq_of);
 uint8_t si4734_get_rev(void);
 uint8_t si4734_am_set_freq(uint16_t freq_khz);
 uint8_t si4734_ssb_set_freq(uint16_t freq_khz);
+void reciver_set_mode(uint8_t rec_mod);
+uint8_t si4735_RDS_set_interrupt();
+uint8_t si4735_Configures_RDS_setting();
+uint8_t si4735_RDS_set_group();
 
 // #endif
