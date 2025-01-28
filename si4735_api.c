@@ -228,7 +228,7 @@ uint8_t si4735_RDS_set_group(){
 	  receive FIFO required before
 	  RDSRECV is set.
 	*/
-	status = si4734_set_prop(0x1501, 0x0004); // FM_RDS_INT_FIFO_COUNT
+	status = si4734_set_prop(0x1501, 0x0001); // FM_RDS_INT_FIFO_COUNT // 0x0004
 	// usart_transmit(&tx_rb, "RDS_set_group: COMPLITED\r\n");
 	// char buff[30];
 	// sprintf(buff, "status = %02X\r\n", status);
@@ -240,7 +240,7 @@ uint8_t si4735_Configures_RDS_setting(){
 	/*
 	  Configures RDS setting.
 	*/
-	status = si4734_set_prop(0x1502, 0xEF01); // FM_RDS_CONFIG
+	status = si4734_set_prop(0x1502, 0xFF01); // FM_RDS_CONFIG // 0xEF01
 	// usart_transmit(&tx_rb, "Configures_RDS_setting: COMPLITED\r\n");
 	// char buff[30];
 	// sprintf(buff, "status = %02X\r\n", status);
@@ -568,3 +568,161 @@ void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset,uint
 	show_freq(app, freq, offset);
 	show_reciver_status(app, snr,rssi,status);
 }
+#if 0
+void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint16_t BLOCKD
+
+	uint8_t errLevelA, errLevelB, errLevelC, errLevelD, groupType;
+  	bool groupVer;
+
+	char buff[30];
+	// uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
+	// get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD);
+	// print_RDS();
+	uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
+	uint8_t status,RDSFIFOUSED,RESP1,RESP2,RESP12;
+	status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD, &RDSFIFOUSED, &RESP1, &RESP2, &RESP12);
+	if(RESP1&RDSRECV_MASK){
+		if(RESP2&RDSSYNC_MASK && RDSFIFOUSED > 0){
+			if (BLOCKA == MaybeThisIDIsReal) {
+				if (IDRepeatCounter < REPEATS_TO_BE_REAL_ID) {
+					IDRepeatCounter++; // Значения совпадают, отразим это в счетчике
+					if (IDRepeatCounter == REPEATS_TO_BE_REAL_ID)
+						ID = MaybeThisIDIsReal; // Определились с ID станции
+				}
+			}
+			else {
+				IDRepeatCounter = 0; // Значения не совпадают, считаем заново
+				MaybeThisIDIsReal = BLOCKA;
+			}
+			if (ID == 0) return; // Пока не определимся с ID, разбирать RDS не будем
+			if (BLOCKA != ID) return; // ID не совпадает. Пропустим эту RDS группу
+			// ID станции не скачет, вероятность корректности группы в целом выше
+			if (!ID_printed) { // Выведем ID
+				// Serial.print("ID: ");
+				// Serial.println(ID, HEX);
+				sprintf(buff, "ID: %X\r\n", ID);
+				usart_transmit(&tx_rb, buff);
+				ID_printed = true; // Установим флаг чтобы больше не выводить ID
+			}
+			if(RESP12&BLEB_MASK<3||true){ // с проверкой на ошибку не работает, у меня ошибки или неправильно запрограммировал?
+				// Блок B корректный, можем определить тип и версию группы
+				// status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD); // 1
+				if (!PTy_printed) { // Но сначала считаем PTy
+					if (PTy == (BLOCKB & RDS_ALL_PTY_MASK) >> RDS_ALL_PTY_SHIFT) { 
+						// Считаем PTy корректным, выведем его
+						char *PTy_buffer = (char*) malloc(30);
+						// strcpy_P(PTy_buffer, (char*)pgm_read_word(&(PTyList[PTy])));
+						strcpy(PTy_buffer, PTyList[PTy]);
+						// Serial.print("PTy: ");
+						usart_transmit(&tx_rb, "PTy: ");
+						// Serial.println(PTy_buffer);
+						usart_transmit(&tx_rb, PTy_buffer);
+						usart_transmit(&tx_rb, "\r\n");
+						free(PTy_buffer);
+						PTy_printed = true;
+					}
+					else PTy = (BLOCKB & RDS_ALL_PTY_MASK) >> RDS_ALL_PTY_SHIFT;
+				}
+				groupType = (BLOCKB & RDS_ALL_GROUPTYPE_MASK) >> RDS_ALL_GROUPTYPE_SHIFT;
+				groupVer = (BLOCKB & RDS_ALL_GROUPVER) > 0;
+				// ************* 0A, 0B - PSName, PTY ************
+				if ((groupType == 0)) { //if((groupType == 0) and (errLevelD < 3))
+					//blockD = getRegister(RDA5807M_REG_BLOCK_D);
+					// status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD); // 1
+					// Сравним новые символы PSName со старыми:
+					char c = (uint8_t)(BLOCKD >> 8); // новый символ // char c = uint8_t(BLOCKD >> 8); // новый символ
+					uint8_t i = (BLOCKB & (uint16_t)RDS_GROUP0_C1C0_MASK) << 1; // его позиция в PSName
+					if (PSName[i] != c) { // символы различаются
+						PSNameUpdated &= !(1 << i); // сбросим флаг в PSNameUpdated
+						PSName[i] = c;
+					}
+					else // символы совпадают, установим флаг в PSNameUpdated:
+						PSNameUpdated |= 1 << i;
+					// Аналогично для второго символа
+					c = (uint8_t)(BLOCKD & 255); // c = uint8_t(BLOCKD & 255);
+					i++;
+					if (PSName[i] != c) {
+						PSNameUpdated &= !(1 << i);
+						PSName[i] = c;
+					}
+					else
+						PSNameUpdated |= 1 << i;
+					// Когда все 8 флагов в PSNameUpdated установлены, считаем что PSName получено полностью
+					if (PSNameUpdated == 255) {
+						// Дополнительное сравнение с предыдущим значением, чтобы не дублировать в Serial
+						if (strcmp(PSName, PSName_prev) != 0) {
+							//Serial.print("PSName: ");
+							usart_transmit(&tx_rb, "PSName: ");
+							//Serial.println(PSName);
+							usart_transmit(&tx_rb, PSName);
+							usart_transmit(&tx_rb, "\r\n");
+							strcpy(PSName_prev, PSName);
+						}
+					}
+				} // PSName, PTy end
+				// ******************************************
+				// ******** 4A - Clock time and date ********
+				if ((groupType == 4) && (groupVer == 0)) { // (groupType == 4) and (groupVer == 0) and (errLevelC < 3) and (errLevelD < 3)
+					// blockC = getRegister(RDA5807M_REG_BLOCK_C);
+					// blockD = getRegister(RDA5807M_REG_BLOCK_D);
+					// status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD); // 1
+					char buf[30];
+
+					unsigned long MJD;
+					uint16_t year;
+					uint8_t month, day;
+					MJD = (BLOCKB & RDS_GROUP4A_MJD15_16_MASK);
+					MJD = (MJD << 15) | (BLOCKC >> RDS_GROUP4A_MJD0_14_SHIFT);
+					// Serial.print("Date: ");
+					usart_transmit(&tx_rb, "Date: ");
+					if ((MJD < 58844) || (MJD > 62497)){ 
+						// Serial.println("decode error");
+						usart_transmit(&tx_rb, "decode error\r\n");
+					}
+					else {
+						MJDDecode(MJD, &year, &month, &day);
+						if ((day <=31) && (month <= 12)) {
+							sprintf(buf, "%02d.%02d.%04d\r\n", day, month, year);
+							// Serial.println(buf);
+							usart_transmit(&tx_rb, buf);
+						}
+						else{
+							// Serial.println("decode error");
+							usart_transmit(&tx_rb, "decode error\r\n");
+						}
+					}
+				
+					long timeInMinutes;
+					uint8_t hours, minutes, LTO;
+					hours = (BLOCKC & RDS_GROUP4A_HOURS4_MASK) << 4;
+					hours |= (BLOCKD & RDS_GROUP4A_HOURS0_3_MASK) >> RDS_GROUP4A_HOURS0_3_SHIFT;
+					minutes = (BLOCKD & RDS_GROUP4A_MINUTES_MASK) >> RDS_GROUP4A_MINUTES_SHIFT;
+					if ((hours > 23) || (minutes > 59)){
+						// Serial.println("Time: decode error");
+						usart_transmit(&tx_rb, "Time: decode error\r\n");
+					}
+					else {
+						timeInMinutes = hours * 60 + minutes;
+						LTO = BLOCKD & RDS_GROUP4A_LTO_MASK;
+						if (BLOCKD & RDS_GROUP4A_LTO_SIGN_MASK) {
+							timeInMinutes -= (BLOCKD & RDS_GROUP4A_LTO_MASK) * 30;
+							if (timeInMinutes < 0) timeInMinutes += 60 * 24;
+						}  
+						else {
+							timeInMinutes += (BLOCKD & RDS_GROUP4A_LTO_MASK) * 30;
+							if (timeInMinutes > 60 * 24) timeInMinutes -= 60 * 24;
+						}
+						hours = timeInMinutes / 60;
+						minutes = timeInMinutes % 60;
+						sprintf(buf, "Time: %02d:%02d\r\n", hours, minutes);
+						// Serial.println(buf);
+						usart_transmit(&tx_rb, buf);
+					}
+				} // Clock end
+				// ******************************************
+			}
+		}	
+	}		
+
+}
+#endif

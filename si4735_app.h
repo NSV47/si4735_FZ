@@ -11,6 +11,8 @@
 
 #include "si4735_icons.h"
 
+#include <notification/notification_messages.h>
+
 #if 0 // объявил в si4735_api.h
 struct si4735App {
     Gui* gui;
