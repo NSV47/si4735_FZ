@@ -33,6 +33,10 @@ struct si4735App {
     uint8_t status;
     uint8_t n;
     uint16_t coef;
+
+    uint8_t reciver_mode;
+
+    uint8_t vol;
 };
 
 typedef struct si4735App si4735App;

@@ -12,6 +12,8 @@
 #define __SSB_MODE 2
 #define SYNC_MODE 3
 
+uint16_t old_freq=0;
+
 static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     // UNUSED(ctx);
     furi_assert(ctx);
@@ -20,6 +22,7 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     canvas_clear(canvas);
 
     // canvas_draw_icon(canvas, 0, 29, &I_amperka_ru_logo_128x35px);
+    canvas_draw_icon(canvas, 0, 0, &I_main_interface);
 
     // canvas_set_font(canvas, FontPrimary);
     // canvas_draw_str(canvas, 4, 8, "RUN");
@@ -88,7 +91,7 @@ int32_t si4735_app(void *p) {
     UNUSED(p);
     si4735App* app = si4735_app_alloc();
 
-    uint8_t status=0xff,rev,snr,rssi,resp1,resp2;
+    uint8_t status,rev,snr,rssi,resp1,resp2;
     UNUSED(resp1);
     UNUSED(resp2);
     UNUSED(rev);
@@ -102,12 +105,26 @@ int32_t si4735_app(void *p) {
 
     InputEvent event;
 
+
+
     while (1) {
         show_freq(app, app->freq_khz, app->offset);
-        get_recivier_signal_status(&snr,&rssi,&freq_of);
+        status=get_recivier_signal_status(&snr,&rssi,&freq_of);
         show_reciver_full_status(app, app->freq_khz,bfo,snr,rssi,status);
         // furi_hal_gpio_write(app->output_pin, app->output_value);
-
+    #if 0
+        if(old_freq!=app->freq_khz){
+			old_freq=app->freq_khz;
+			if(reciver_mode==1) {
+                status=si4734_fm_set_freq(encoder);
+            }else if(reciver_mode==2) {
+                status=si4734_ssb_set_freq(encoder);
+            }
+			else {
+                status=si4734_am_set_freq(encoder);
+            }
+		}
+    #endif
         if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
             if (event.type == InputTypePress) {
                 if (event.key == InputKeyBack){
@@ -115,10 +132,15 @@ int32_t si4735_app(void *p) {
                     break;
                 }else if(event.key == InputKeyUp){
                     si4734_volume(7);//громче
+                    // vol++;
                 }else if(event.key == InputKeyDown){
                     si4734_volume(-7);//тише
                 }else if(event.key == InputKeyOk){
                     // show_freq(9920, 0);
+                }else if(event.key == InputKeyRight){
+                    app->freq_khz++;
+                }else if(event.key == InputKeyLeft){
+                    app->freq_khz--;
                 }
             } 
         }

@@ -9,6 +9,7 @@ App(
     ],
     stack_size=2 * 1024,
     order=90,
-    fap_icon="emoji_smile_icon_10x10px.png",
+    fap_icon="radio_logo.png",
     fap_category="Misc",
+    fap_icon_assets="images",
 )

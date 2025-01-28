@@ -9,6 +9,8 @@
 
 #include "si4735_api.h"
 
+#include "si4735_icons.h"
+
 #if 0 // объявил в si4735_api.h
 struct si4735App {
     Gui* gui;
