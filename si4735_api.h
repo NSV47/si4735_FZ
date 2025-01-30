@@ -11,6 +11,8 @@
 // #include "si4735_app.h"
 #include <furi_hal_i2c.h>
 
+#include <notification/notification_messages.h>
+
 #define TAG "si4735_device"
 
 typedef enum {
@@ -36,6 +38,8 @@ struct si4735App {
     bool output_value;
 
     FuriTimer* timer;
+
+    NotificationApp* notifications;
 
     uint16_t freq_khz;
     uint8_t multiplier_freq;

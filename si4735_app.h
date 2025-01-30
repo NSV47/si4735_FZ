@@ -13,6 +13,10 @@
 
 #include <notification/notification_messages.h>
 
+#include <gui/elements.h>
+
+#include <input/input.h>
+
 #if 0 // объявил в si4735_api.h
 struct si4735App {
     Gui* gui;

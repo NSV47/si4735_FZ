@@ -1,9 +1,5 @@
 #include "si4735_app.h"
 
-#include <gui/elements.h>
-
-#include <input/input.h>
-
 #define AM_MODE 0
 #define __FM_MODE 1
 #define __SSB_MODE 2
@@ -33,14 +29,21 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     snprintf(string, 10, "%d", app->freq_khz * app->multiplier_freq); // app->freq_khz // app->multiplier_freq
     // FURI_LOG_I(TAG, string);
     canvas_set_font(canvas, FontBigNumbers);
-    canvas_draw_str(canvas, 4, 16, string);
+    canvas_draw_str(canvas, 35, 49, string);
+    // elements_multiline_text_aligned(canvas, 45, 38, AlignRight, AlignTop, string);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 64, 16, "kHz");
+    canvas_draw_str(canvas, 110, 49, "kHz");
     canvas_set_font(canvas, FontSecondary);
-    snprintf(string, 30, "SNR:%2ddB SI: %2duVdB", app->snr, app->rssi);
-    canvas_draw_str(canvas, 4, 26, string);
-    snprintf(string, 30, "status x%x %dKHz   ", app->status, app->coef * app->n);
-    canvas_draw_str(canvas, 4, 36, string);
+    // snprintf(string, 30, "SNR:%2ddB SI: %2duVdB", app->snr, app->rssi);
+    snprintf(string, 30, "SNR:%2ddB", app->snr);
+    canvas_draw_str(canvas, 73, 31, string);
+    snprintf(string, 30, "RSSI:%2duVdB", app->rssi);
+    canvas_draw_str(canvas, 71, 21, string);
+    // snprintf(string, 30, "status x%x %dKHz   ", app->status, app->coef * app->n);
+    snprintf(string, 30, "x%x", app->status);
+    canvas_draw_str(canvas, 2, 42, string); // 4, 36
+    snprintf(string, 30, "%dKHz   ", app->coef * app->n);
+    canvas_draw_str(canvas, 2, 50, string); // 4, 36
 }
 
 static void timer_callback(void* context) { // FuriMessageQueue* event_queue
@@ -87,6 +90,8 @@ si4735App* si4735_app_alloc() {
     // furi_hal_gpio_init(app->input_pin, GpioModeInput, GpioPullUp, GpioSpeedVeryHigh);
     furi_hal_gpio_init(app->output_pin, GpioModeOutputPushPull, GpioPullNo, GpioSpeedVeryHigh);
 
+    app->notifications = furi_record_open(RECORD_NOTIFICATION);
+
     return app;
 }
 
@@ -100,6 +105,8 @@ void si4735_app_free(si4735App* app) {
     furi_timer_free(app->timer);
 
     furi_message_queue_free(app->event_queue);
+
+    furi_record_close(RECORD_NOTIFICATION);
 
     furi_record_close(RECORD_GUI);
 }
@@ -122,7 +129,7 @@ int32_t si4735_app(void *p) {
 
     si4735Event event; // InputEvent
 
-    furi_timer_start(app->timer, 5000);
+    furi_timer_start(app->timer, 1000);
 
     while (1) {
         show_freq(app, app->freq_khz, app->offset);
@@ -146,25 +153,30 @@ int32_t si4735_app(void *p) {
         // Выбираем событие из очереди в переменную event (ждем бесконечно долго, если очередь пуста)
         // и проверяем, что у нас получилось это сделать
         furi_check(furi_message_queue_get(app->event_queue, &event, FuriWaitForever) == FuriStatusOk);
-        // if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
-           if (event.type == EventTypeInput) {
-                if (event.input.key == InputKeyBack){
-                    // si4734_powerdown();
-                    break;
-                }else if(event.input.key == InputKeyUp){
-                    si4734_volume(7);//громче
-                    // vol++;
-                }else if(event.input.key == InputKeyDown){
-                    si4734_volume(-7);//тише
-                }else if(event.input.key == InputKeyOk){
-                    // show_freq(9920, 0);
-                }else if(event.input.key == InputKeyRight){
-                    app->freq_khz++;
-                }else if(event.input.key == InputKeyLeft){
-                    app->freq_khz--;
-                }
-            } 
-        // }
+    // if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
+        if (event.type == EventTypeInput) {
+            if (event.input.key == InputKeyBack){
+                // si4734_powerdown();
+                break;
+            }else if(event.input.key == InputKeyUp){
+                si4734_volume(7);//громче
+                // vol++;
+            }else if(event.input.key == InputKeyDown){
+                si4734_volume(-7);//тише
+            }else if(event.input.key == InputKeyOk){
+                // show_freq(9920, 0);
+            }else if(event.input.key == InputKeyRight){
+                app->freq_khz++;
+            }else if(event.input.key == InputKeyLeft){
+                app->freq_khz--;
+            }
+        // Наше событие — это сработавший таймер
+        } else if(event.type == EventTypeTick) {
+            // Отправляем нотификацию мигания синим светодиодом
+            notification_message(app->notifications, &sequence_blink_blue_100);
+            FURI_LOG_I(TAG, "timer action");
+        }
+    // }
     #endif
     }
 
