@@ -53,6 +53,10 @@ struct si4735App {
     uint8_t reciver_mode;
 
     uint8_t vol;
+
+    uint16_t ID;
+    char *PTy_buffer;
+    char PSName[9];
 };
 
 typedef struct si4735App si4735App;
@@ -197,7 +201,37 @@ typedef struct si4735App si4735App;
 #define FM_SEEK_TUNE_SNR_THRESHOLD 0x1403  // Sets the SNR threshold for a valid FM Seek/Tune
 #define FM_SEEK_TUNE_RSSI_THRESHOLD 0x1404 // Sets the RSSI threshold for a valid FM Seek/Tune
 
+//-----------------------------------------------------------------------------
+//группы RDS
+#define RDS_ALL_GROUPTYPE_MASK 0xF000
+#define RDS_ALL_GROUPTYPE_SHIFT 12
+#define RDS_ALL_GROUPVER 0x800
+#define RDS_ALL_TP 0x400
+#define RDS_ALL_PTY_MASK 0x3E0
+#define RDS_ALL_PTY_SHIFT 5
+#define RDS_GROUP0_TA 4
+#define RDS_GROUP0_MS 3
+#define RDS_GROUP0_DI 2
+#define RDS_GROUP0_C1C0_MASK 0x03 // (word)
+#define RDS_GROUP4A_MJD15_16_MASK 0x03 // (word)
+//#define RDS_GROUP4A_MJD0_14_MASK 0xFFFE
+#define RDS_GROUP4A_MJD0_14_SHIFT 1
+#define RDS_GROUP4A_HOURS4_MASK 0x01 // (word)
+#define RDS_GROUP4A_HOURS0_3_MASK 0xF000
+#define RDS_GROUP4A_HOURS0_3_SHIFT 12
+#define RDS_GROUP4A_MINUTES_MASK 0x0FC0
+#define RDS_GROUP4A_MINUTES_SHIFT 6
+#define RDS_GROUP4A_LTO_SIGN_MASK 0x0020
+#define RDS_GROUP4A_LTO_MASK 0x001F
+#define RDS_GROUP2_ABFLAG_MASK 0x0010
+#define RDS_GROUP2_ADDRESS_MASK 0x000F
 
+#define RDSRECV_MASK 0x01
+#define RDSSYNC_MASK 0x01
+#define BLEA_MASK 0xC0
+#define BLEB_MASK 0x30
+#define BLEC_MASK 0x0C
+#define BLED_MASK 0x03
 
 void delay(uint16_t ms);
 void si4734_reset(si4735App* app);
@@ -225,5 +259,10 @@ uint8_t get_recivier_signal_status(uint8_t *snr,uint8_t *rssi,uint8_t *freq_of);
 uint8_t si4734_am_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr);
 void show_reciver_status(si4735App* app, uint8_t snr, uint8_t rssi, uint8_t status);
 void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset, uint8_t snr, uint8_t rssi, uint8_t status);
-
+void show_RDS_hum_2(si4735App* app);
+uint8_t get_recivier_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, 
+                                uint8_t *RESP2, uint8_t *RESP12);
+uint8_t si4735_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, 
+                            uint8_t *RESP2, uint8_t *RESP12);
+void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day);                            
 // #endif

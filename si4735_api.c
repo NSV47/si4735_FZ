@@ -2,6 +2,58 @@
 
 #include "patch_init.h"
 
+const char  PTy_0[] = "No program type or undefined";
+const char  PTy_1[] = "News";
+const char  PTy_2[] = "Current affairs";
+const char  PTy_3[] = "Information";
+const char  PTy_4[] = "Sport";
+const char  PTy_5[] = "Education";
+const char  PTy_6[] = "Drama";
+const char  PTy_7[] = "Culture";
+const char  PTy_8[] = "Science";
+const char  PTy_9[] = "Varied";
+const char PTy_10[] = "Pop music";
+const char PTy_11[] = "Rock music";
+const char PTy_12[] = "Easy listening";
+const char PTy_13[] = "Light classical";
+const char PTy_14[] = "Serious classical";
+const char PTy_15[] = "Other music";
+const char PTy_16[] = "Weather";
+const char PTy_17[] = "Finance";
+const char PTy_18[] = "Children’s programs";
+const char PTy_19[] = "Social affairs";
+const char PTy_20[] = "Religion";
+const char PTy_21[] = "Phone-in";
+const char PTy_22[] = "Travel";
+const char PTy_23[] = "Leisure";
+const char PTy_24[] = "Jazz music";
+const char PTy_25[] = "Country music";
+const char PTy_26[] = "National music";
+const char PTy_27[] = "Oldies music";
+const char PTy_28[] = "Folk music";
+const char PTy_29[] = "Documentary";
+const char PTy_30[] = "Alarm test";
+const char PTy_31[] = "Alarm";
+
+const char* const PTyList[] = {PTy_0,  PTy_1,  PTy_2,  PTy_3,  PTy_4,  PTy_5,  PTy_6,  PTy_7,
+                               PTy_8,  PTy_9,  PTy_10, PTy_11, PTy_12, PTy_13, PTy_14, PTy_15,
+                               PTy_16, PTy_17, PTy_18, PTy_19, PTy_20, PTy_21, PTy_22, PTy_23,
+                               PTy_24, PTy_25, PTy_26, PTy_27, PTy_28, PTy_29, PTy_30, PTy_31};
+
+
+uint8_t PTy = 255;
+char PSName[9]; // Значение PSName
+char PSName_prev[9];
+uint8_t PSNameUpdated = 0; // Для отслеживания изменений в PSName
+//-----------------------------------------------------------------------------
+
+uint16_t MaybeThisIDIsReal = 0;
+uint8_t IDRepeatCounter = 0;
+#define REPEATS_TO_BE_REAL_ID 3
+uint16_t ID = 0;
+bool ID_printed = false;
+bool PTy_printed = false;
+
 #define _AM_MODE 0
 #define _FM_MODE 1
 #define _SSB_MODE 2
@@ -568,18 +620,120 @@ void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset,uint
 	show_freq(app, freq, offset);
 	show_reciver_status(app, snr,rssi,status);
 }
-#if 0
-void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint16_t BLOCKD
+
+uint8_t get_recivier_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2,
+                                 uint8_t *RESP12){
+	uint8_t status=0xff; // ,resp1,resp2
+	switch(reciver_mode){
+		case _AM_MODE: 
+			// status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
+			break;
+		case _FM_MODE: 
+			// status=si4734_fm_signal_status(rssi,snr,freq_of);
+			status=si4735_RDS_status(BLOCKA,BLOCKB,BLOCKC,BLOCKD,RDSFIFOUSED,RESP1,RESP2,RESP12);
+			break;
+		case _SSB_MODE: 
+			// status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
+			break;
+		default:
+			status=0xff;
+			break;
+		}
+	return status;
+}
+
+uint8_t si4735_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2,
+						   uint8_t *RESP12){
+	uint8_t cmd[3]={0x24,0x1};
+	uint8_t tray=0;
+	uint8_t answer[13];
+	uint32_t timeout = 100;
+
+	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
+
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 2, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,2,0,0);
+	delay(50);
+	answer[0]=0;
+	while(answer[0]==0){
+		furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), answer, 13, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,answer,13);
+		tray++;
+		if(tray==255) {
+			furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+			return 0xff;
+		}
+		delay(50);
+	}
+	/*
+		int val = ADCL + (ADCH << 8);
+	 */
+	*BLOCKA=answer[5] + (answer[4] << 8);
+	*BLOCKB=answer[7] + (answer[6] << 8);
+	*BLOCKC=answer[9] + (answer[8] << 8);
+	*BLOCKD=answer[11] + (answer[10] << 8);
+
+	*RDSFIFOUSED=answer[3];
+
+	*RESP1=answer[1];
+
+	*RESP2=answer[2];
+
+	*RESP12=answer[12];
+
+	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+
+	return answer[0];
+	
+}
+
+void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day){
+  #if 0
+	unsigned long L = 2400000 + MJD + 68570;
+	unsigned long N = (L * 4) / 146097;
+	L = L - (146097.0 * N + 3) / 4;
+	(*year) = 4000 * (L + 1) / 1461001;
+	L = L - 1461 * (*year) / 4 + 31;
+	(*month) = 80.0 * L / 2447.0;
+	(*day) = L - 2447 * (*month) / 80;
+	L = (*month) / 11;
+	(*month) = (*month) + 2 - 12 * L;
+	(*year) = 100 * (N - 49) + year + L;
+  #endif
+    // Добавляем смещение для перехода к юлианской дате
+    int jd = MJD + 2400001;
+
+    // Переменные для промежуточных вычислений
+    int A, B, C, D, E;
+
+    // Преобразование JD в григорианскую дату
+    A = jd + 32044;
+    B = (4 * A + 3) / 146097;
+    C = A - (146097 * B) / 4;
+    D = (4 * C + 3) / 1461;
+    E = C - (1461 * D) / 4;
+    int monthDay = (5 * E + 2) / 153;
+
+    *day = E - (153 * monthDay + 2) / 5 + 1;
+    *month = monthDay + 3 - 12 * (monthDay / 10);
+    *year = 100 * B + D - 4800 + (monthDay / 10);
+}
+
+#if 1
+void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint16_t BLOCKD
 
 	uint8_t errLevelA, errLevelB, errLevelC, errLevelD, groupType;
+	UNUSED(errLevelA);
+	UNUSED(errLevelB);
+	UNUSED(errLevelC);
+	UNUSED(errLevelD);
   	bool groupVer;
 
-	char buff[30];
+	// char buff[30];
 	// uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
 	// get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD);
 	// print_RDS();
 	uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
 	uint8_t status,RDSFIFOUSED,RESP1,RESP2,RESP12;
+	UNUSED(status);
 	status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD, &RDSFIFOUSED, &RESP1, &RESP2, &RESP12);
 	if(RESP1&RDSRECV_MASK){
 		if(RESP2&RDSSYNC_MASK && RDSFIFOUSED > 0){
@@ -600,11 +754,15 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 			if (!ID_printed) { // Выведем ID
 				// Serial.print("ID: ");
 				// Serial.println(ID, HEX);
-				sprintf(buff, "ID: %X\r\n", ID);
-				usart_transmit(&tx_rb, buff);
+				
+				// sprintf(buff, "ID: %X\r\n", ID);
+				// usart_transmit(&tx_rb, buff);
+
+				app->ID=ID;
+
 				ID_printed = true; // Установим флаг чтобы больше не выводить ID
 			}
-			if(RESP12&BLEB_MASK<3||true){ // с проверкой на ошибку не работает, у меня ошибки или неправильно запрограммировал?
+			if((RESP12&(BLEB_MASK<3))||true){ // с проверкой на ошибку не работает, у меня ошибки или неправильно запрограммировал?
 				// Блок B корректный, можем определить тип и версию группы
 				// status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD); // 1
 				if (!PTy_printed) { // Но сначала считаем PTy
@@ -614,10 +772,15 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 						// strcpy_P(PTy_buffer, (char*)pgm_read_word(&(PTyList[PTy])));
 						strcpy(PTy_buffer, PTyList[PTy]);
 						// Serial.print("PTy: ");
-						usart_transmit(&tx_rb, "PTy: ");
+						
+						// usart_transmit(&tx_rb, "PTy: ");
 						// Serial.println(PTy_buffer);
-						usart_transmit(&tx_rb, PTy_buffer);
-						usart_transmit(&tx_rb, "\r\n");
+						// usart_transmit(&tx_rb, PTy_buffer);
+						// usart_transmit(&tx_rb, "\r\n");
+						
+						// app->PTy_buffer=PTy_buffer; // запись ввобще неверна for(int i=0;i<size;++i){app->PTy_buffer[i]=PTy_buffer}
+						strcpy(app->PTy_buffer, PTy_buffer); // здесь ловится NULL pointer
+
 						free(PTy_buffer);
 						PTy_printed = true;
 					}
@@ -633,7 +796,7 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 					char c = (uint8_t)(BLOCKD >> 8); // новый символ // char c = uint8_t(BLOCKD >> 8); // новый символ
 					uint8_t i = (BLOCKB & (uint16_t)RDS_GROUP0_C1C0_MASK) << 1; // его позиция в PSName
 					if (PSName[i] != c) { // символы различаются
-						PSNameUpdated &= !(1 << i); // сбросим флаг в PSNameUpdated
+						PSNameUpdated &= !((1 << i) != 0); // сбросим флаг в PSNameUpdated // здесь может быть необходимо ==0
 						PSName[i] = c;
 					}
 					else // символы совпадают, установим флаг в PSNameUpdated:
@@ -642,20 +805,26 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 					c = (uint8_t)(BLOCKD & 255); // c = uint8_t(BLOCKD & 255);
 					i++;
 					if (PSName[i] != c) {
-						PSNameUpdated &= !(1 << i);
+						PSNameUpdated &= !((1 << i)!=0); // здесь может быть необходимо ==0
 						PSName[i] = c;
 					}
 					else
-						PSNameUpdated |= 1 << i;
+						PSNameUpdated |= (1 << i); // здесь может быть надо !=0
 					// Когда все 8 флагов в PSNameUpdated установлены, считаем что PSName получено полностью
 					if (PSNameUpdated == 255) {
 						// Дополнительное сравнение с предыдущим значением, чтобы не дублировать в Serial
 						if (strcmp(PSName, PSName_prev) != 0) {
+							
 							//Serial.print("PSName: ");
-							usart_transmit(&tx_rb, "PSName: ");
+							// usart_transmit(&tx_rb, "PSName: ");
 							//Serial.println(PSName);
-							usart_transmit(&tx_rb, PSName);
-							usart_transmit(&tx_rb, "\r\n");
+							// usart_transmit(&tx_rb, PSName);
+							// usart_transmit(&tx_rb, "\r\n");
+							// for(uint8_t i=0;i<9;++i){
+								// app->PSName[i]=PSName[i];
+							// }
+							strcpy(app->PSName, PSName);
+							
 							strcpy(PSName_prev, PSName);
 						}
 					}
@@ -666,7 +835,7 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 					// blockC = getRegister(RDA5807M_REG_BLOCK_C);
 					// blockD = getRegister(RDA5807M_REG_BLOCK_D);
 					// status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD); // 1
-					char buf[30];
+					// char buf[30];
 
 					unsigned long MJD;
 					uint16_t year;
@@ -674,32 +843,33 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 					MJD = (BLOCKB & RDS_GROUP4A_MJD15_16_MASK);
 					MJD = (MJD << 15) | (BLOCKC >> RDS_GROUP4A_MJD0_14_SHIFT);
 					// Serial.print("Date: ");
-					usart_transmit(&tx_rb, "Date: ");
+					// usart_transmit(&tx_rb, "Date: "); // вывожу
 					if ((MJD < 58844) || (MJD > 62497)){ 
 						// Serial.println("decode error");
-						usart_transmit(&tx_rb, "decode error\r\n");
+						// usart_transmit(&tx_rb, "decode error\r\n"); // вывожу
 					}
 					else {
 						MJDDecode(MJD, &year, &month, &day);
 						if ((day <=31) && (month <= 12)) {
-							sprintf(buf, "%02d.%02d.%04d\r\n", day, month, year);
+							// sprintf(buf, "%02d.%02d.%04d\r\n", day, month, year); // вывожу
 							// Serial.println(buf);
-							usart_transmit(&tx_rb, buf);
+							// usart_transmit(&tx_rb, buf); // вывожу
 						}
 						else{
 							// Serial.println("decode error");
-							usart_transmit(&tx_rb, "decode error\r\n");
+							// usart_transmit(&tx_rb, "decode error\r\n"); // вывожу
 						}
 					}
 				
 					long timeInMinutes;
 					uint8_t hours, minutes, LTO;
+					UNUSED(LTO);
 					hours = (BLOCKC & RDS_GROUP4A_HOURS4_MASK) << 4;
 					hours |= (BLOCKD & RDS_GROUP4A_HOURS0_3_MASK) >> RDS_GROUP4A_HOURS0_3_SHIFT;
 					minutes = (BLOCKD & RDS_GROUP4A_MINUTES_MASK) >> RDS_GROUP4A_MINUTES_SHIFT;
 					if ((hours > 23) || (minutes > 59)){
 						// Serial.println("Time: decode error");
-						usart_transmit(&tx_rb, "Time: decode error\r\n");
+						// usart_transmit(&tx_rb, "Time: decode error\r\n"); // вывожу
 					}
 					else {
 						timeInMinutes = hours * 60 + minutes;
@@ -714,9 +884,9 @@ void show_RDS_hum_2(){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint
 						}
 						hours = timeInMinutes / 60;
 						minutes = timeInMinutes % 60;
-						sprintf(buf, "Time: %02d:%02d\r\n", hours, minutes);
+						// sprintf(buf, "Time: %02d:%02d\r\n", hours, minutes); // вывожу
 						// Serial.println(buf);
-						usart_transmit(&tx_rb, buf);
+						// usart_transmit(&tx_rb, buf); // вывожу
 					}
 				} // Clock end
 				// ******************************************

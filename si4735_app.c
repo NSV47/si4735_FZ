@@ -44,6 +44,9 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     canvas_draw_str(canvas, 2, 42, string); // 4, 36
     snprintf(string, 30, "%dKHz   ", app->coef * app->n);
     canvas_draw_str(canvas, 2, 50, string); // 4, 36
+
+    canvas_draw_str(canvas, 2, 9, app->PTy_buffer);
+    canvas_draw_str(canvas, 2, 18, app->PSName);
 }
 
 static void timer_callback(void* context) { // FuriMessageQueue* event_queue
@@ -92,6 +95,8 @@ si4735App* si4735_app_alloc() {
 
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
+    app->PTy_buffer = (char*) malloc(30);
+
     return app;
 }
 
@@ -109,6 +114,8 @@ void si4735_app_free(si4735App* app) {
     furi_record_close(RECORD_NOTIFICATION);
 
     furi_record_close(RECORD_GUI);
+
+    free(app->PTy_buffer);
 }
 
 int32_t si4735_app(void *p) {
@@ -129,7 +136,7 @@ int32_t si4735_app(void *p) {
 
     si4735Event event; // InputEvent
 
-    furi_timer_start(app->timer, 1000);
+    furi_timer_start(app->timer, 40);
 
     while (1) {
         show_freq(app, app->freq_khz, app->offset);
@@ -173,8 +180,9 @@ int32_t si4735_app(void *p) {
         // Наше событие — это сработавший таймер
         } else if(event.type == EventTypeTick) {
             // Отправляем нотификацию мигания синим светодиодом
-            notification_message(app->notifications, &sequence_blink_blue_100);
-            FURI_LOG_I(TAG, "timer action");
+            // notification_message(app->notifications, &sequence_blink_blue_100);
+            // FURI_LOG_I(TAG, "timer action");
+            show_RDS_hum_2(app);
         }
     // }
     #endif
