@@ -43,9 +43,14 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     canvas_draw_str(canvas, 4, 36, string);
 }
 
-static void timer_callback(FuriMessageQueue* event_queue) {
+static void timer_callback(void* context) { // FuriMessageQueue* event_queue
     // Проверяем, что контекст не нулевой
-    furi_assert(event_queue);
+    furi_assert(context); // furi_assert(event_queue);
+
+    // Приводим context к типу FuriMessageQueue*
+    FuriMessageQueue* event_queue = (FuriMessageQueue*)context;
+
+    // UNUSED(event_queue);
 
     si4735Event event = {.type = EventTypeTick};
     furi_message_queue_put(event_queue, &event, 0);
