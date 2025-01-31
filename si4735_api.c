@@ -891,7 +891,9 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 				} // Clock end
 				// ******************************************
 			}
-		}	
+		}
+		// After this call, the control will be returned back to event_loop_timers_app_run()
+        furi_event_loop_stop(app->event_loop);
 	}		
 
 }

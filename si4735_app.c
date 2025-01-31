@@ -64,6 +64,29 @@ static void timer_callback(void* context) { // FuriMessageQueue* event_queue
 }
 #endif
 
+// This function is called each time the timer expires (i.e. once per 1000 ms (1s) in this example)
+static void event_loop_timer_callback(void* context) {
+    furi_assert(context);
+    si4735App* app = context;
+
+    // Print the countdown value
+    // FURI_LOG_I(TAG, "T-00:00:%02lu", app->countdown_value);
+
+    show_RDS_hum_2(app);
+#if 0
+    if(app->countdown_value == 0) {
+        // If the countdown reached 0, print the final line and stop the event loop
+        FURI_LOG_I(TAG, "Blast off to adventure!");
+        // After this call, the control will be returned back to event_loop_timers_app_run()
+        furi_event_loop_stop(app->event_loop);
+
+    } else {
+        // Decrement the countdown value
+        app->countdown_value -= 1;
+    }
+#endif
+}
+
 static void si4735_app_input_callback(InputEvent* input_event, void* ctx) {
     furi_assert(ctx);
 
@@ -88,6 +111,13 @@ si4735App* si4735_app_alloc() {
     gui_add_view_port(app->gui, app->view_port, GuiLayerFullscreen);
 
     // app->timer = furi_timer_alloc(timer_callback, FuriTimerTypePeriodic, app->event_queue);
+    // Create an event loop instance.
+    app->event_loop = furi_event_loop_alloc();
+    // Create a software timer instance.
+    // The timer is bound to the event loop instance and will execute in its context.
+    // Here, the timer type is periodic, i.e. it will restart automatically after expiring.
+    app->timer = furi_event_loop_timer_alloc(
+        app->event_loop, event_loop_timer_callback, FuriEventLoopTimerTypePeriodic, app);
 
     // app->input_pin = &gpio_ext_pa6;
     app->output_pin = &gpio_ext_pa7;
@@ -110,6 +140,11 @@ void si4735_app_free(si4735App* app) {
     view_port_free(app->view_port);
 
     // furi_timer_free(app->timer);
+    // IMPORTANT: All event loop timers MUST be deleted BEFORE deleting the event loop itself.
+    // Failure to do so will result in a crash.
+    furi_event_loop_timer_free(app->timer);
+    // With all timers deleted, it's safe to delete the event loop.
+    furi_event_loop_free(app->event_loop);
 
     furi_message_queue_free(app->event_queue);
 
@@ -118,6 +153,8 @@ void si4735_app_free(si4735App* app) {
     furi_record_close(RECORD_GUI);
 
     free(app->PTy_buffer);
+
+    free(app);
 }
 
 int32_t si4735_app(void *p) {
@@ -139,8 +176,13 @@ int32_t si4735_app(void *p) {
     InputEvent event; // InputEvent // si4735Event
 
     // furi_timer_start(app->timer, 40); // 40
+    // Timers can be started either before the event loop is run, or in any
+    // callback function called by a running event loop.
+    furi_event_loop_timer_start(app->timer, 40); // COUNTDOWN_INTERVAL_MS
 
     while (1) {
+        // This call will block until furi_event_loop_stop() is called.
+        furi_event_loop_run(app->event_loop);
         show_freq(app, app->freq_khz, app->offset);
         status=get_recivier_signal_status(&snr,&rssi,&freq_of);
         show_reciver_full_status(app, app->freq_khz,bfo,snr,rssi,status);

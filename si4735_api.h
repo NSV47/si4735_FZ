@@ -28,6 +28,8 @@ struct si4735App {
     bool output_value;
 
     // FuriTimer* timer;
+    FuriEventLoop* event_loop;
+    FuriEventLoopTimer* timer;
 
     NotificationApp* notifications;
 
