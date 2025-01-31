@@ -15,16 +15,6 @@
 
 #define TAG "si4735_device"
 
-typedef enum {
-    EventTypeTick,
-    EventTypeInput,
-} EventType;
-
-typedef struct {
-    EventType type;
-    InputEvent input;
-} si4735Event;
-
 struct si4735App {
     Gui* gui;
     ViewPort* view_port;
@@ -37,7 +27,7 @@ struct si4735App {
     // bool input_value;
     bool output_value;
 
-    FuriTimer* timer;
+    // FuriTimer* timer;
 
     NotificationApp* notifications;
 
