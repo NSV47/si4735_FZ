@@ -136,7 +136,7 @@ int32_t si4735_app(void *p) {
 
     si4735Event event; // InputEvent
 
-    furi_timer_start(app->timer, 40);
+    furi_timer_start(app->timer, 40); // 40
 
     while (1) {
         show_freq(app, app->freq_khz, app->offset);
@@ -159,7 +159,7 @@ int32_t si4735_app(void *p) {
     #if 1
         // Выбираем событие из очереди в переменную event (ждем бесконечно долго, если очередь пуста)
         // и проверяем, что у нас получилось это сделать
-        furi_check(furi_message_queue_get(app->event_queue, &event, FuriWaitForever) == FuriStatusOk);
+        furi_check(furi_message_queue_get(app->event_queue, &event, FuriWaitForever) == FuriStatusOk); // FuriWaitForever
     // if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
         if (event.type == EventTypeInput) {
             if (event.input.key == InputKeyBack){

@@ -719,7 +719,7 @@ void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * da
 
 #if 1
 void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint16_t BLOCKD
-
+	// UNUSED(app);
 	uint8_t errLevelA, errLevelB, errLevelC, errLevelD, groupType;
 	UNUSED(errLevelA);
 	UNUSED(errLevelB);
@@ -758,7 +758,7 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 				// sprintf(buff, "ID: %X\r\n", ID);
 				// usart_transmit(&tx_rb, buff);
 
-				app->ID=ID;
+				// app->ID=ID;
 
 				ID_printed = true; // Установим флаг чтобы больше не выводить ID
 			}
