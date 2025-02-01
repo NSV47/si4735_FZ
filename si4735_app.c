@@ -16,6 +16,7 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
 
     // canvas_draw_icon(canvas, 0, 29, &I_amperka_ru_logo_128x35px);
     canvas_draw_icon(canvas, 0, 0, &I_main_interface);
+    canvas_draw_icon(canvas, 102, 0, &I_RDS);
 
     // canvas_set_font(canvas, FontPrimary);
     // canvas_draw_str(canvas, 4, 8, "RUN");
