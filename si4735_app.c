@@ -48,6 +48,9 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
 
     canvas_draw_str(canvas, 2, 9, app->PTy_buffer);
     canvas_draw_str(canvas, 2, 18, app->PSName);
+
+    snprintf(string, 30, "VOL:%d", app->vol);
+    canvas_draw_str(canvas, 2, 31, string); // 4, 36
 }
 
 #if 0
@@ -168,6 +171,9 @@ int32_t si4735_app(void *p) {
     UNUSED(rev);
     int16_t bfo=0;
     uint8_t freq_of; // int8_t freq_of
+
+    uint16_t old_vol=0x1A;
+    app->vol = 0x1A;
     // furi_delay_ms(10000);
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
@@ -201,6 +207,10 @@ int32_t si4735_app(void *p) {
             }
 		}
     #endif
+        if(old_vol!=app->vol){
+            old_vol=app->vol;
+			si4734_set_prop(RX_VOLUME, app->vol);
+		}
     #if 1
         // Выбираем событие из очереди в переменную event (ждем бесконечно долго, если очередь пуста)
         // и проверяем, что у нас получилось это сделать
@@ -211,10 +221,17 @@ int32_t si4735_app(void *p) {
                     // si4734_powerdown();
                     break;
                 }else if(event.key == InputKeyUp){ // .input
-                    si4734_volume(7);//громче
-                    // vol++;
+                    // si4734_volume(7);//громче
+                    app->vol++;
+                    if(app->vol>0x3f){
+                        app->vol=0x3f;
+                    }
                 }else if(event.key == InputKeyDown){ // .input
-                    si4734_volume(-7);//тише
+                    // si4734_volume(-7);//тише
+                    app->vol--;
+                    if(app->vol<1){
+                        app->vol=1;
+                    }
                 }else if(event.key == InputKeyOk){ // .input
                     // show_freq(9920, 0);
                 }else if(event.key == InputKeyRight){ // .input

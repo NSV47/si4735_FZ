@@ -195,7 +195,7 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		si4734_set_prop(AM_CHANNEL_FILTER, 0x0100);
 		si4734_set_prop(AM_SOFT_MUTE_MAX_ATTENUATION, 0);//soft mute off
 		si4734_set_prop(AM_AUTOMATIC_VOLUME_CONTROL_MAX_GAIN, 0x5000); //60дб
-		si4734_set_prop(RX_VOLUME, vol);
+		si4734_set_prop(RX_VOLUME, app->vol);
 		//si4734_set_prop(AM_SEEK_BAND_TOP, 30000);
 		MIN_LIMIT=200;
 		MAX_LIMIT=30000;
@@ -212,7 +212,7 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		reciver_mode=_FM_MODE;
 		si4734_fm_mode();
 		si4734_set_prop(FM_DEEMPHASIS,0x0001);//01 = 50 µs. Used in Europe, Australia, Japan
-		si4734_set_prop(RX_VOLUME, vol);
+		si4734_set_prop(RX_VOLUME, app->vol);
 		MIN_LIMIT=6000;
 		MAX_LIMIT=11100;
 		coef=1; // coef=1;
@@ -246,7 +246,7 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		si4734_set_prop(SSB_BFO, bfo);
 		si4734_set_prop(AM_SOFT_MUTE_MAX_ATTENUATION, 0);//soft mute off
 		si4734_set_prop(AM_AUTOMATIC_VOLUME_CONTROL_MAX_GAIN, 0x7000); //84дб
-		si4734_set_prop(RX_VOLUME, vol);
+		si4734_set_prop(RX_VOLUME, app->vol);
 		MIN_LIMIT=200;
 		MAX_LIMIT=30000;
 		//encoder=7100;
