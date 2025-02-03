@@ -23,6 +23,7 @@ struct si4735App {
     // DrawMode draw_mode;
 
     const GpioPin* output_pin;
+    const GpioPin* SHND_pin;
 
     // bool input_value;
     bool output_value;
