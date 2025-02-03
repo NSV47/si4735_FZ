@@ -24,9 +24,10 @@ struct si4735App {
 
     const GpioPin* output_pin;
     const GpioPin* SHND_pin;
+    const GpioPin* mute_pin;
 
     // bool input_value;
-    bool output_value;
+    bool mute_value;
 
     // FuriTimer* timer;
     FuriEventLoop* event_loop;

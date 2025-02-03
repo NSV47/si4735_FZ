@@ -126,10 +126,12 @@ si4735App* si4735_app_alloc() {
     // app->input_pin = &gpio_ext_pa6;
     app->output_pin = &gpio_ext_pa7;
     app->SHND_pin = &gpio_ext_pc3;
+    app->mute_pin = &gpio_ext_pb2;
 
     // furi_hal_gpio_init(app->input_pin, GpioModeInput, GpioPullUp, GpioSpeedVeryHigh);
     furi_hal_gpio_init(app->output_pin, GpioModeOutputPushPull, GpioPullNo, GpioSpeedVeryHigh);
     furi_hal_gpio_init(app->SHND_pin, GpioModeOutputPushPull, GpioPullNo, GpioSpeedVeryHigh);
+    furi_hal_gpio_init(app->mute_pin, GpioModeOutputPushPull, GpioPullNo, GpioSpeedVeryHigh);
 
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
@@ -183,6 +185,10 @@ int32_t si4735_app(void *p) {
     reciver_set_mode(app, __FM_MODE);
 
     furi_hal_gpio_write(app->SHND_pin, true);
+
+    app->mute_value = true;
+
+    furi_hal_gpio_write(app->mute_pin, app->mute_value);
 
     InputEvent event; // InputEvent // si4735Event
 
@@ -238,6 +244,8 @@ int32_t si4735_app(void *p) {
                     }
                 }else if(event.key == InputKeyOk){ // .input
                     // show_freq(9920, 0);
+                    app->mute_value = !app->mute_value;
+                    furi_hal_gpio_write(app->mute_pin, app->mute_value);
                 }else if(event.key == InputKeyRight){ // .input
                     app->freq_khz++;
                 }else if(event.key == InputKeyLeft){ // .input
