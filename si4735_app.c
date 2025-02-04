@@ -177,12 +177,15 @@ int32_t si4735_app(void *p) {
     uint8_t freq_of; // int8_t freq_of
 
     uint16_t old_vol=0x1A;
-    app->vol = 0x1A;
+    uint16_t old_freq_khz=0;
+    int16_t old_bfo=0;
+
+    app->vol = 0x3A; // 0x1A
     // furi_delay_ms(10000);
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
     // si4734_fm_mode(); // просто запускает кварц
-    reciver_set_mode(app, __FM_MODE);
+    reciver_set_mode(app, __FM_MODE); // __SSB_MODE // __FM_MODE // AM_MODE
 
     furi_hal_gpio_write(app->SHND_pin, true);
 
@@ -195,13 +198,17 @@ int32_t si4735_app(void *p) {
     // furi_timer_start(app->timer, 40); // 40
     // Timers can be started either before the event loop is run, or in any
     // callback function called by a running event loop.
-    furi_event_loop_timer_start(app->timer, 40); // COUNTDOWN_INTERVAL_MS
-
+    if(app->reciver_mode==__FM_MODE){
+        // furi_event_loop_timer_start(app->timer, 40); // COUNTDOWN_INTERVAL_MS
+    }
     while (1) {
         // This call will block until furi_event_loop_stop() is called.
-        furi_event_loop_run(app->event_loop);
+        if(app->reciver_mode==__FM_MODE){
+            // furi_event_loop_run(app->event_loop);
+        }
+        show_RDS_hum_2(app);
         show_freq(app, app->freq_khz, app->offset);
-        status=get_recivier_signal_status(&snr,&rssi,&freq_of);
+        status=get_recivier_signal_status(app, &snr,&rssi,&freq_of);
         show_reciver_full_status(app, app->freq_khz,bfo,snr,rssi,status);
         // furi_hal_gpio_write(app->output_pin, app->output_value);
     #if 0
@@ -221,6 +228,24 @@ int32_t si4735_app(void *p) {
             old_vol=app->vol;
 			si4734_set_prop(RX_VOLUME, app->vol);
 		}
+        if(old_freq_khz!=app->freq_khz){
+			old_freq_khz=app->freq_khz;
+			if(app->reciver_mode==1) status=si4734_fm_set_freq(app->freq_khz);
+			else if(app->reciver_mode==2) status=si4734_ssb_set_freq(app->freq_khz);
+			else status=si4734_am_set_freq(app->freq_khz);
+		}	
+		
+		if(old_bfo!=bfo && app->reciver_mode==2){
+            si4734_set_prop(SSB_BFO, bfo);
+            // o_printf_at(1,6,1,0,"BFO: %d  ",-bfo);
+            if(bfo>16000||bfo<-16000){
+                app->freq_khz=app->freq_khz-bfo/1000;
+                bfo=bfo%1000;
+            }
+            //si4734_ssb_set_freq(encoder);
+            old_bfo=bfo;
+        }
+
     #if 1
         // Выбираем событие из очереди в переменную event (ждем бесконечно долго, если очередь пуста)
         // и проверяем, что у нас получилось это сделать
@@ -248,6 +273,7 @@ int32_t si4735_app(void *p) {
                     furi_hal_gpio_write(app->mute_pin, app->mute_value);
                 }else if(event.key == InputKeyRight){ // .input
                     app->freq_khz++;
+                    // PTy_printed = false;
                 }else if(event.key == InputKeyLeft){ // .input
                     app->freq_khz--;
                 }
@@ -263,6 +289,7 @@ int32_t si4735_app(void *p) {
             #endif
         }
     #endif
+        for(uint32_t i=0;i<0xffff;i++)__asm__("nop");
     }
 
     si4735_app_free(app);

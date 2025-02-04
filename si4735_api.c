@@ -52,7 +52,7 @@ uint8_t IDRepeatCounter = 0;
 #define REPEATS_TO_BE_REAL_ID 3
 uint16_t ID = 0;
 bool ID_printed = false;
-bool PTy_printed = false;
+static bool PTy_printed = false;
 
 #define _AM_MODE 0
 #define _FM_MODE 1
@@ -150,7 +150,7 @@ uint8_t si4734_am_mode(){
 	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
 
 	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 3, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,3,0,0);
-	delay(1000);
+	furi_delay_ms(1000); // delay(1000);
 	do{ 
 		furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), &status, 1, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,&status,1);
 		tray++;
@@ -183,14 +183,14 @@ uint8_t si4734_set_prop(uint16_t prop, uint16_t val){
 }
 
 void reciver_set_mode(si4735App* app, uint8_t rec_mod){
-	static uint16_t amfreq=15200,fmfreq=9920;//запоминаем старое значение // 8910
+	static uint16_t amfreq=3853,fmfreq=9920;//запоминаем старое значение // 8910
 	
 	si4734_powerdown();
 								//частоты
-	if(reciver_mode==_FM_MODE)fmfreq=app->freq_khz; else amfreq=encoder;
+	// if(app->reciver_mode==_FM_MODE)fmfreq=app->freq_khz; else amfreq=app->freq_khz;
 	if(rec_mod==_AM_MODE){
 		//o_printf("AM mode\n");
-		reciver_mode=_AM_MODE;
+		app->reciver_mode=_AM_MODE;
 		si4734_am_mode();
 		si4734_set_prop(AM_CHANNEL_FILTER, 0x0100);
 		si4734_set_prop(AM_SOFT_MUTE_MAX_ATTENUATION, 0);//soft mute off
@@ -200,16 +200,18 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		MIN_LIMIT=200;
 		MAX_LIMIT=30000;
 		//encoder=15200;
-		encoder=amfreq-bfo/1000;//поправка на bfo
+		// app->freq_khz=amfreq-bfo/1000;//поправка на bfo // encoder=
+		app->freq_khz=amfreq;
 		bfo=bfo%1000;
-		si4734_am_set_freq(encoder);
+		FURI_LOG_I(TAG, "freq_khz:%d\r", app->freq_khz);
+		si4734_am_set_freq(app->freq_khz); // encoder
 		coef=1;
 		app->coef=coef;
 		encoder_mode=0;
 	} else if(rec_mod==_FM_MODE){
 		//oled_clear();
 		//o_printf("FM mode\n");
-		reciver_mode=_FM_MODE;
+		app->reciver_mode=_FM_MODE;
 		si4734_fm_mode();
 		si4734_set_prop(FM_DEEMPHASIS,0x0001);//01 = 50 µs. Used in Europe, Australia, Japan
 		si4734_set_prop(RX_VOLUME, app->vol);
@@ -239,7 +241,7 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		// sprintf(buff, "status = %2X\r\n", status);
 		// usart_transmit(&tx_rb, buff);
 	}else{
-		reciver_mode=_SSB_MODE;
+		app->reciver_mode=_SSB_MODE;
 		//bfo=0;
 		si4734_ssb_patch_mode(ssb_patch_content);
 		si4734_set_prop(0x0101,((1<<15)|(1<<12)|(1<<4)|2));//ssb man page 24
@@ -250,8 +252,8 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		MIN_LIMIT=200;
 		MAX_LIMIT=30000;
 		//encoder=7100;
-		encoder=amfreq;
-		si4734_ssb_set_freq(encoder);
+		app->freq_khz=amfreq; // app->freq_khz // encoder
+		si4734_ssb_set_freq(app->freq_khz);
 		coef=1;
 		app->coef=coef;
 		encoder_mode=0;
@@ -305,7 +307,7 @@ uint8_t si4734_ssb_patch_mode(const uint8_t *patch){
 	uint8_t cmd[3]={POWER_UP,0x31,0x05};
 	uint8_t status, tray=0;
 	uint16_t count,iterate=0;
-	uint32_t timeout = 100;
+	uint32_t timeout = 1000;
 
 	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
 
@@ -478,7 +480,7 @@ void show_freq(si4735App* app, uint16_t freq, int16_t offset){
 	UNUSED(offset_hz);
 	uint16_t freq_khz;
 	// char buff[30];
-	if(reciver_mode==_FM_MODE){
+	if(app->reciver_mode==_FM_MODE){
 		// o_printf_at(18*5,1,1,0,"x10");
 		app->multiplier_freq = 10;
 		// sprintf(buff, "x10\r\n");
@@ -492,7 +494,7 @@ void show_freq(si4735App* app, uint16_t freq, int16_t offset){
 	// usart_transmit(&tx_rb, buff);
 	//Вся эта канитель от того что bfo работает не как описанно в 
 	//в даташите f=f-bfo а f=f-bfo
-	if(reciver_mode==_SSB_MODE){
+	if(app->reciver_mode==_SSB_MODE){
 		offset_hz=(1000-offset%1000)%1000;
 		freq_khz=freq-offset/1000;
 		if(offset%1000>0)freq_khz--;
@@ -500,6 +502,7 @@ void show_freq(si4735App* app, uint16_t freq, int16_t offset){
 		// sprintf(buff, "%03d\r\n", offset_hz);
 		// usart_transmit(&tx_rb, buff);
 		// o_printf_at(0,1,3,0,"%5d",freq_khz);
+		app->freq_khz=freq_khz;
 		// sprintf(buff, "%5d\r\n", freq_khz);
 		// usart_transmit(&tx_rb, buff);
 	}
@@ -520,20 +523,50 @@ void show_freq(si4735App* app, uint16_t freq, int16_t offset){
 	
 }
 
-uint8_t get_recivier_signal_status(uint8_t *snr,uint8_t *rssi,uint8_t *freq_of){
+uint8_t get_recivier_signal_status(si4735App* app, uint8_t *snr,uint8_t *rssi,uint8_t *freq_of){
 	uint8_t status,resp1,resp2;
-	switch(reciver_mode){
+	switch(app->reciver_mode){
 		case _AM_MODE: status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
 			break;
 		case _FM_MODE: status=si4734_fm_signal_status(rssi,snr,freq_of);
 			break;
-		case _SSB_MODE: status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
+		case _SSB_MODE: status=si4734_ssb_signal_status(&resp1,&resp2,rssi,snr); // si4734_ssb_signal_status // si4734_am_signal_status(&resp1,&resp2,rssi,snr)
 			break;
 		default:
 			status=0xff;
 			break;
 		}
 	return status;
+}
+
+uint8_t si4734_ssb_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr){
+	uint8_t cmd[3]={AM_RSQ_STATUS,0x1};
+	uint8_t tray=0;
+	uint8_t answer[6];
+	uint32_t timeout = 100;
+
+	furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
+
+	furi_hal_i2c_tx(&furi_hal_i2c_handle_external, (SI4734ADR<<1), cmd, 2, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,cmd,2,0,0);
+	delay(50);
+	answer[0]=0;
+	while(answer[0]==0){
+		furi_hal_i2c_rx(&furi_hal_i2c_handle_external, ((SI4734ADR<<1)|0x1), answer, 6, timeout); // i2c_transfer7(SI4734I2C,SI4734ADR,0,0,answer,6);
+		tray++;
+		if(tray==255) {
+			furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+			return 0xff;
+		}
+		delay(50);
+		}
+	*resp1=answer[1];
+	*resp2=answer[2];
+	*rssi=answer[4];
+	*snr=answer[5];
+
+	furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+
+	return answer[0];
 }
 
 uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,uint8_t *freq_of){
@@ -608,7 +641,7 @@ void show_reciver_status(si4735App* app, uint8_t snr, uint8_t rssi, uint8_t stat
 	// usart_transmit(&tx_rb, buff);
 	//coef - глобальная переменная
 	//n поправочный коэфициэнт шага
-	if(reciver_mode==_FM_MODE)n=10;
+	if(app->reciver_mode==_FM_MODE)n=10;
 	app->n=n;
 	//o_printf_at(1,5,1,0,"status x%x %dKHz   ",status,coef*n);
 	app->status=status;
@@ -621,10 +654,10 @@ void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset,uint
 	show_reciver_status(app, snr,rssi,status);
 }
 
-uint8_t get_recivier_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2,
-                                 uint8_t *RESP12){
+uint8_t get_recivier_RDS_status(si4735App* app, uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, 
+								uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2, uint8_t *RESP12){
 	uint8_t status=0xff; // ,resp1,resp2
-	switch(reciver_mode){
+	switch(app->reciver_mode){
 		case _AM_MODE: 
 			// status=si4734_am_signal_status(&resp1,&resp2,rssi,snr);
 			break;
@@ -734,7 +767,7 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 	uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
 	uint8_t status,RDSFIFOUSED,RESP1,RESP2,RESP12;
 	UNUSED(status);
-	status = get_recivier_RDS_status(&BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD, &RDSFIFOUSED, &RESP1, &RESP2, &RESP12);
+	status = get_recivier_RDS_status(app, &BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD, &RDSFIFOUSED, &RESP1, &RESP2, &RESP12);
 	if(RESP1&RDSRECV_MASK){
 		if(RESP2&RDSSYNC_MASK && RDSFIFOUSED > 0){
 			if (BLOCKA == MaybeThisIDIsReal) {

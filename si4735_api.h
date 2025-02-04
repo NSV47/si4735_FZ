@@ -239,6 +239,7 @@ uint8_t si4734_fm_mode();
 uint8_t si4734_ssb_patch_mode(const uint8_t *patch);
 uint8_t si4734_fm_set_freq(uint16_t freq_10khz);
 uint8_t si4734_get_freq(uint16_t *freq,uint8_t *snr, uint8_t *rssi);
+uint8_t si4734_ssb_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr);
 uint8_t si4734_fm_signal_status(uint8_t *rssi,uint8_t *snr,uint8_t *freq_of); // int8_t *freq_of
 uint8_t si4734_get_rev(void);
 uint8_t si4734_am_set_freq(uint16_t freq_khz);
@@ -249,13 +250,13 @@ uint8_t si4735_Configures_RDS_setting();
 uint8_t si4735_RDS_set_group();
 void si4734_volume(int8_t dv);
 void show_freq(si4735App* app, uint16_t freq, int16_t offset);
-uint8_t get_recivier_signal_status(uint8_t *snr,uint8_t *rssi,uint8_t *freq_of);
+uint8_t get_recivier_signal_status(si4735App* app, uint8_t *snr,uint8_t *rssi,uint8_t *freq_of);
 uint8_t si4734_am_signal_status(uint8_t *resp1,uint8_t *resp2,uint8_t *rssi,uint8_t *snr);
 void show_reciver_status(si4735App* app, uint8_t snr, uint8_t rssi, uint8_t status);
 void show_reciver_full_status(si4735App* app, uint16_t freq, int16_t offset, uint8_t snr, uint8_t rssi, uint8_t status);
 void show_RDS_hum_2(si4735App* app);
-uint8_t get_recivier_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, 
-                                uint8_t *RESP2, uint8_t *RESP12);
+uint8_t get_recivier_RDS_status(si4735App* app, uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, 
+                                uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2, uint8_t *RESP12);
 uint8_t si4735_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, 
                             uint8_t *RESP2, uint8_t *RESP12);
 void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day);                            
