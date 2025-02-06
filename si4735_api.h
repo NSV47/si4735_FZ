@@ -15,12 +15,21 @@
 
 #define TAG "si4735_device"
 
+typedef enum {
+    AM_MODE,
+    __FM_MODE,
+    __SSB_MODE,
+    // SYNC_MODE,
+    TOTAL_SWITCHING_MODES = 3,
+} SwitchingModes;
+
 struct si4735App {
     Gui* gui;
     ViewPort* view_port;
     FuriMessageQueue* event_queue;
 
     // DrawMode draw_mode;
+    SwitchingModes switching_mode;
 
     const GpioPin* output_pin;
     const GpioPin* SHND_pin;

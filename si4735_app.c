@@ -1,9 +1,9 @@
 #include "si4735_app.h"
 
-#define AM_MODE 0
-#define __FM_MODE 1
-#define __SSB_MODE 2
-#define SYNC_MODE 3
+// #define AM_MODE 0
+// #define __FM_MODE 1
+// #define __SSB_MODE 2
+// #define SYNC_MODE 3
 
 uint16_t old_freq=0;
 
@@ -281,11 +281,15 @@ int32_t si4735_app(void *p) {
                 }
             // Наше событие — это сработавший таймер
             }else if(event.type == InputTypeLong){
+                SwitchingModes mode = app->switching_mode;
                 if (event.key == InputKeyBack){ // .input
                     si4734_powerdown();
                     furi_hal_gpio_write(app->SHND_pin, false);
                     // si4735_app_free(app);
                     break;
+                }else if (event.key == InputKeyLeft){
+                    app->switching_mode = (mode - 1 + TOTAL_SWITCHING_MODES) % TOTAL_SWITCHING_MODES;
+                    reciver_set_mode(app, app->switching_mode);
                 }
             }else if(event.type == InputTypeRelease){
                 if (event.key == InputKeyBack){ // .input
