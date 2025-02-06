@@ -931,3 +931,10 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 
 }
 #endif
+
+void reciver_next_step(si4735App* app){
+	uint8_t st=app->multiplier_freq;
+	st*=10;
+	if(st>200)st=1;
+	app->multiplier_freq=st;
+}

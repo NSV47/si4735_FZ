@@ -268,5 +268,6 @@ uint8_t get_recivier_RDS_status(si4735App* app, uint16_t *BLOCKA, uint16_t *BLOC
                                 uint8_t *RDSFIFOUSED, uint8_t *RESP1, uint8_t *RESP2, uint8_t *RESP12);
 uint8_t si4735_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, uint16_t *BLOCKD, uint8_t *RDSFIFOUSED, uint8_t *RESP1, 
                             uint8_t *RESP2, uint8_t *RESP12);
-void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day);                            
+void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day);
+void reciver_next_step(si4735App* app);
 // #endif

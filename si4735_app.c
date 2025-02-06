@@ -290,6 +290,8 @@ int32_t si4735_app(void *p) {
                 }else if (event.key == InputKeyLeft){
                     app->switching_mode = (mode - 1 + TOTAL_SWITCHING_MODES) % TOTAL_SWITCHING_MODES;
                     reciver_set_mode(app, app->switching_mode);
+                }else if (event.key == InputKeyRight){
+                    reciver_next_step(app);
                 }
             }else if(event.type == InputTypeRelease){
                 if (event.key == InputKeyBack){ // .input
