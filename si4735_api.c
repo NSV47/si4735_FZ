@@ -183,7 +183,7 @@ uint8_t si4734_set_prop(uint16_t prop, uint16_t val){
 }
 
 void reciver_set_mode(si4735App* app, uint8_t rec_mod){
-	static uint16_t amfreq=3853,fmfreq=9920;//запоминаем старое значение // 8910
+	static uint16_t amfreq=8432,fmfreq=9920;//запоминаем старое значение // 8910
 	
 	si4734_powerdown();
 								//частоты

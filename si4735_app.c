@@ -185,7 +185,7 @@ int32_t si4735_app(void *p) {
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
     // si4734_fm_mode(); // просто запускает кварц
-    reciver_set_mode(app, __FM_MODE); // __SSB_MODE // __FM_MODE // AM_MODE
+    reciver_set_mode(app, __SSB_MODE); // __SSB_MODE // __FM_MODE // AM_MODE
 
     furi_hal_gpio_write(app->SHND_pin, true);
 
@@ -206,7 +206,9 @@ int32_t si4735_app(void *p) {
         if(app->reciver_mode==__FM_MODE){
             // furi_event_loop_run(app->event_loop);
         }
-        show_RDS_hum_2(app);
+        if(app->reciver_mode==__FM_MODE){
+            show_RDS_hum_2(app);
+        }
         show_freq(app, app->freq_khz, app->offset);
         status=get_recivier_signal_status(app, &snr,&rssi,&freq_of);
         show_reciver_full_status(app, app->freq_khz,bfo,snr,rssi,status);
@@ -251,10 +253,10 @@ int32_t si4735_app(void *p) {
         // и проверяем, что у нас получилось это сделать
         // furi_check(furi_message_queue_get(app->event_queue, &event, FuriWaitForever) == FuriStatusOk); // FuriWaitForever
         if (furi_message_queue_get(app->event_queue, &event, 100) == FuriStatusOk) {
-            if (event.type == InputTypePress) { // EventTypeInput
+            if (event.type == InputTypePress) { // EventTypeInput // InputTypeLong // InputTypeRelease
                 if (event.key == InputKeyBack){ // .input
                     // si4734_powerdown();
-                    break;
+                    // break;
                 }else if(event.key == InputKeyUp){ // .input
                     // si4734_volume(7);//громче
                     app->vol++;
@@ -278,6 +280,19 @@ int32_t si4735_app(void *p) {
                     app->freq_khz--;
                 }
             // Наше событие — это сработавший таймер
+            }else if(event.type == InputTypeLong){
+                if (event.key == InputKeyBack){ // .input
+                    si4734_powerdown();
+                    furi_hal_gpio_write(app->SHND_pin, false);
+                    // si4735_app_free(app);
+                    break;
+                }
+            }else if(event.type == InputTypeRelease){
+                if (event.key == InputKeyBack){ // .input
+                    // si4734_powerdown();
+                    // si4735_app_free(app);
+                    break;
+                }
             }
             #if 0 
             else if(event.type == EventTypeTick) {
