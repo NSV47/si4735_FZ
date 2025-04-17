@@ -5,6 +5,8 @@
 // #define __SSB_MODE 2
 // #define SYNC_MODE 3
 
+#define AUTO_SHUTDOWN_MS (30 * 60 * 1000) // 30 минут в миллисекундах
+
 uint16_t old_freq=0;
 
 static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
@@ -169,6 +171,9 @@ int32_t si4735_app(void *p) {
     UNUSED(p);
     si4735App* app = si4735_app_alloc();
 
+    uint32_t start_time = furi_get_tick();
+    bool is_running = true;
+
     uint8_t status,rev,snr,rssi,resp1,resp2;
     UNUSED(resp1);
     UNUSED(resp2);
@@ -208,6 +213,17 @@ int32_t si4735_app(void *p) {
         }
         if(app->reciver_mode==__FM_MODE){
             show_RDS_hum_2(app);
+        }
+        if(furi_get_tick() - start_time >= AUTO_SHUTDOWN_MS) {
+            FURI_LOG_I("Radio", "Время вышло, выключаемся!");
+            is_running = false; // Завершаем цикл
+            // break;
+        }
+        if(!is_running){
+            si4734_powerdown();
+            furi_hal_gpio_write(app->SHND_pin, false);
+            // si4735_app_free(app);
+            break;
         }
         show_freq(app, app->freq_khz, app->offset);
         status=get_recivier_signal_status(app, &snr,&rssi,&freq_of);
