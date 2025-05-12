@@ -69,7 +69,119 @@ struct si4735App {
     uint16_t ID;
     char *PTy_buffer;
     char PSName[9];
+    char rds_buffer2A[65];
 };
+
+/**
+ * @ingroup group01
+ *
+ * @brief Block B data type
+ *
+ * @details For GCC on System-V ABI on 386-compatible (32-bit processors), the following stands:
+ *
+ * 1) Bit-fields are allocated from right to left (least to most significant).
+ * 2) A bit-field must entirely reside in a storage unit appropriate for its declared type.
+ *    Thus a bit-field never crosses its unit boundary.
+ * 3) Bit-fields may share a storage unit with other struct/union members, including members that are not bit-fields.
+ *    Of course, struct members occupy different parts of the storage unit.
+ * 4) Unnamed bit-fields' types do not affect the alignment of a structure or union, although individual
+ *    bit-fields' member offsets obey the alignment constraints.
+ *
+ * @see also Si47XX PROGRAMMING GUIDE; AN332 (REV 1.0); pages 78 and 79
+ * @see also https://en.wikipedia.org/wiki/Radio_Data_System
+ */
+typedef union
+{
+    struct
+    {
+        uint16_t address : 2;            // Depends on Group Type and Version codes. If 0A or 0B it is the Text Segment Address.
+        uint16_t DI : 1;                 // Decoder Controll bit
+        uint16_t MS : 1;                 // Music/Speech
+        uint16_t TA : 1;                 // Traffic Announcement
+        uint16_t programType : 5;        // PTY (Program Type) code
+        uint16_t trafficProgramCode : 1; // (TP) => 0 = No Traffic Alerts; 1 = Station gives Traffic Alerts
+        uint16_t versionCode : 1;        // (B0) => 0=A; 1=B
+        uint16_t groupType : 4;          // Group Type code.
+    } group0;
+    struct
+    {
+        uint16_t address : 4;            // Depends on Group Type and Version codes. If 2A or 2B it is the Text Segment Address.
+        uint16_t textABFlag : 1;         // Do something if it chanhes from binary "0" to binary "1" or vice-versa
+        uint16_t programType : 5;        // PTY (Program Type) code
+        uint16_t trafficProgramCode : 1; // (TP) => 0 = No Traffic Alerts; 1 = Station gives Traffic Alerts
+        uint16_t versionCode : 1;        // (B0) => 0=A; 1=B
+        uint16_t groupType : 4;          // Group Type code.
+    } group2;
+    struct
+    {
+        uint16_t content : 4;            // Depends on Group Type and Version codes.
+        uint16_t textABFlag : 1;         // Do something if it chanhes from binary "0" to binary "1" or vice-versa
+        uint16_t programType : 5;        // PTY (Program Type) code
+        uint16_t trafficProgramCode : 1; // (TP) => 0 = No Traffic Alerts; 1 = Station gives Traffic Alerts
+        uint16_t versionCode : 1;        // (B0) => 0=A; 1=B
+        uint16_t groupType : 4;          // Group Type code.
+    } refined;
+    struct
+    {
+        uint8_t lowValue;
+        uint8_t highValue; // Most Significant byte first
+    } raw;
+} si47x_rds_blockb;
+
+/**
+ * @ingroup group01
+ *
+ * @brief Response data type for current channel and reads an entry from the RDS FIFO.
+ *
+ * @see Si47XX PROGRAMMING GUIDE; AN332 (REV 1.0); pages 77 and 78
+ */
+typedef union
+{
+    struct
+    {
+        // status ("RESP0")
+        uint8_t STCINT : 1;
+        uint8_t DUMMY1 : 1;
+        uint8_t RDSINT : 1;
+        uint8_t RSQINT : 1;
+        uint8_t DUMMY2 : 2;
+        uint8_t ERR : 1;
+        uint8_t CTS : 1;
+        // RESP1
+        uint8_t RDSRECV : 1;      //!<  RDS Received; 1 = FIFO filled to minimum number of groups set by RDSFIFOCNT.
+        uint8_t RDSSYNCLOST : 1;  //!<  RDS Sync Lost; 1 = Lost RDS synchronization.
+        uint8_t RDSSYNCFOUND : 1; //!<  RDS Sync Found; 1 = Found RDS synchronization.
+        uint8_t DUMMY3 : 1;
+        uint8_t RDSNEWBLOCKA : 1; //!<  RDS New Block A; 1 = Valid Block A data has been received.
+        uint8_t RDSNEWBLOCKB : 1; //!<  RDS New Block B; 1 = Valid Block B data has been received.
+        uint8_t DUMMY4 : 2;
+        // RESP2
+        uint8_t RDSSYNC : 1; //!<  RDS Sync; 1 = RDS currently synchronized.
+        uint8_t DUMMY5 : 1;
+        uint8_t GRPLOST : 1; //!<  Group Lost; 1 = One or more RDS groups discarded due to FIFO overrun.
+        uint8_t DUMMY6 : 5;
+        // RESP3 to RESP11
+        uint8_t RDSFIFOUSED; //!<  RESP3 - RDS FIFO Used; Number of groups remaining in the RDS FIFO (0 if empty).
+        uint8_t BLOCKAH;     //!<  RESP4 - RDS Block A; HIGH byte
+        uint8_t BLOCKAL;     //!<  RESP5 - RDS Block A; LOW byte
+        uint8_t BLOCKBH;     //!<  RESP6 - RDS Block B; HIGH byte
+        uint8_t BLOCKBL;     //!<  RESP7 - RDS Block B; LOW byte
+        uint8_t BLOCKCH;     //!<  RESP8 - RDS Block C; HIGH byte
+        uint8_t BLOCKCL;     //!<  RESP9 - RDS Block C; LOW byte
+        uint8_t BLOCKDH;     //!<  RESP10 - RDS Block D; HIGH byte
+        uint8_t BLOCKDL;     //!<  RESP11 - RDS Block D; LOW byte
+        // RESP12 - Blocks A to D Corrected Errors.
+        // 0 = No errors;
+        // 1 = 1–2 bit errors detected and corrected;
+        // 2 = 3–5 bit errors detected and corrected.
+        // 3 = Uncorrectable.
+        uint8_t BLED : 2;
+        uint8_t BLEC : 2;
+        uint8_t BLEB : 2;
+        uint8_t BLEA : 2;
+    } resp;
+    uint8_t raw[13];
+} si47x_rds_status;
 
 typedef struct si4735App si4735App;
 
@@ -279,4 +391,5 @@ uint8_t si4735_RDS_status(uint16_t *BLOCKA, uint16_t *BLOCKB, uint16_t *BLOCKC, 
                             uint8_t *RESP2, uint8_t *RESP12);
 void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * day);
 void reciver_next_step(si4735App* app);
+void getNext4Block(char *c, uint16_t *BLOCKC, uint16_t *BLOCKD);
 // #endif

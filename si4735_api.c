@@ -91,6 +91,13 @@ uint8_t steps[]={1,5,10,50};
 uint8_t reciver_mode=0;
 //0 - am, 1 -fm, 2 - ssb
 
+si47x_rds_status currentRdsStatus;       //!<  current RDS status
+
+int rdsTextAdress2A; //!<  rds_buffer2A current position
+
+char rds_buffer2A[65]; //!<  RDS Radio Text buffer - Program Information
+char rds_buffer2A_prev[65];
+
 void delay(uint16_t ms){
 	uint64_t temp;
 	temp=ms<<10;
@@ -752,6 +759,27 @@ void MJDDecode(unsigned long MJD, uint16_t * year, uint8_t * month, uint8_t * da
     *year = 100 * B + D - 4800 + (monthDay / 10);
 }
 
+/**
+ * @ingroup group16 RDS status 
+ * 
+ * @brief Process data received from group 2A
+ * 
+ * @param c  char array reference to the "group  2A" text 
+ */
+void getNext4Block(char *c, uint16_t *BLOCKC, uint16_t *BLOCKD)
+{
+    // c[0] = currentRdsStatus.resp.BLOCKCH;
+    // c[1] = currentRdsStatus.resp.BLOCKCL;
+    // c[2] = currentRdsStatus.resp.BLOCKDH;
+    // c[3] = currentRdsStatus.resp.BLOCKDL;
+
+	c[0] = *BLOCKC >> 8;
+    c[1] = *BLOCKC;
+    c[2] = *BLOCKD >> 8;
+    c[3] = *BLOCKD;
+
+}
+
 #if 1
 void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_t BLOCKC, uint16_t BLOCKD
 	// UNUSED(app);
@@ -769,6 +797,9 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 	uint16_t BLOCKA, BLOCKB, BLOCKC, BLOCKD;
 	uint8_t status,RDSFIFOUSED,RESP1,RESP2,RESP12;
 	UNUSED(status);
+	//-----добавил на втором этапе--------------------------------------
+	si47x_rds_blockb blkB;
+	//------------------------------------------------------------------
 	status = get_recivier_RDS_status(app, &BLOCKA, &BLOCKB, &BLOCKC, &BLOCKD, &RDSFIFOUSED, &RESP1, &RESP2, &RESP12);
 	if(RESP1&RDSRECV_MASK){
 		if(RESP2&RDSSYNC_MASK && RDSFIFOUSED > 0){
@@ -864,6 +895,38 @@ void show_RDS_hum_2(si4735App* app){ // uint16_t BLOCKA, int16_t BLOCKB, uint16_
 						}
 					}
 				} // PSName, PTy end
+				// ******************************************
+				// ******** 2A - Gets the Text processed for the 2A group ********
+				/**
+ 				 * @ingroup group16 RDS status 
+ 				 * 
+ 				 * @brief Gets the Text processed for the 2A group
+ 				 * 
+ 				 * @return char* string with the Text of the group A2  
+ 				 */
+				if ((groupType == 2) /*&& (groupVer == 0)*/ /* && getRdsVersionCode() == 0 */) {
+					// Process group 2A
+            		// Decode B block information
+            		// blkB.raw.highValue = currentRdsStatus.resp.BLOCKBH;
+            		// blkB.raw.lowValue = currentRdsStatus.resp.BLOCKBL;
+					blkB.raw.highValue = BLOCKB >> 8;
+            		blkB.raw.lowValue = BLOCKB;
+            		rdsTextAdress2A = blkB.group2.address;
+
+					if (rdsTextAdress2A >= 0 && rdsTextAdress2A < 16)
+					{
+						getNext4Block(&rds_buffer2A[rdsTextAdress2A * 4], &BLOCKC, &BLOCKD);
+						rds_buffer2A[63] = '\0';
+						// return rds_buffer2A;
+						strcpy(app->rds_buffer2A, rds_buffer2A);
+					#if 0	
+						if (strcmp(rds_buffer2A, rds_buffer2A_prev) != 0) {
+							strcpy(app->rds_buffer2A, rds_buffer2A);
+							strcpy(rds_buffer2A_prev, rds_buffer2A);
+						}
+					#endif
+					}
+				}
 				// ******************************************
 				// ******** 4A - Clock time and date ********
 				if ((groupType == 4) && (groupVer == 0)) { // (groupType == 4) and (groupVer == 0) and (errLevelC < 3) and (errLevelD < 3)

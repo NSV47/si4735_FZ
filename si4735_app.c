@@ -7,12 +7,32 @@
 
 #define AUTO_SHUTDOWN_MS (30 * 60 * 1000) // 30 минут в миллисекундах
 
+// Длина одного "шага" прокрутки (в пикселях)
+#define SCROLL_STEP 1
+// Задержка между кадрами (мс)
+#define SCROLL_DELAY 50
+
 uint16_t old_freq=0;
+
+void draw_scrolling_text(Canvas* canvas, const char* text, int text_width, int y_pos, int* offset) {
+    // Первая часть текста (уходящая за экран)
+    canvas_draw_str(canvas, -(*offset), y_pos, text);
+    // Вторая часть (если текст короче, чем смещение)
+    canvas_draw_str(canvas, text_width - (*offset), y_pos, text);
+    
+    // Увеличиваем смещение и сбрасываем, если текст полностью прошел
+    (*offset) += SCROLL_STEP;
+    if (*offset >= text_width) {
+        *offset = 0;
+    }
+}
 
 static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     // UNUSED(ctx);
     furi_assert(ctx);
     si4735App* app = ctx;
+
+    static int text_offset = 0;
 
     canvas_clear(canvas);
 
@@ -32,9 +52,9 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     snprintf(string, 10, "%d", app->freq_khz * app->multiplier_freq); // app->freq_khz // app->multiplier_freq
     // FURI_LOG_I(TAG, string);
     canvas_set_font(canvas, FontBigNumbers);
-    canvas_draw_str(canvas, 35, 54, string); // 35 49
+    canvas_draw_str(canvas, 35, 50, string); // 35 54
     // elements_multiline_text_aligned(canvas, 45, 38, AlignRight, AlignTop, string);
-    canvas_set_font(canvas, FontSecondary);
+    canvas_set_font(canvas, FontSecondary); // FontSecondary
     canvas_draw_str(canvas, 110, 49, "kHz");
     canvas_set_font(canvas, FontSecondary);
     // snprintf(string, 30, "SNR:%2ddB SI: %2duVdB", app->snr, app->rssi);
@@ -56,10 +76,23 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     canvas_draw_str(canvas, 2, 50, string); // 4, 36
 
     canvas_draw_str(canvas, 2, 9, app->PTy_buffer);
-    canvas_draw_str(canvas, 2, 18, app->PSName);
-
+    canvas_set_font(canvas, FontPrimary); // FontSecondary
+    canvas_draw_str(canvas, 2, 19, app->PSName);
+    canvas_set_font(canvas, FontSecondary); // FontSecondary
     snprintf(string, 30, "VOL:%d", app->vol);
     canvas_draw_str(canvas, 2, 31, string); // 4, 36
+
+    // strncpy(string, app->rds_buffer2A, 25);
+    // canvas_draw_str(canvas, 2, 58, string); // 4, 36
+
+    // strncpy(string, app->rds_buffer2A[33], 32);
+    // canvas_draw_str(canvas, 2, 60, string); // 4, 36
+
+    // Рассчитываем ширину текста в пикселях (примерно, 6px на символ)
+    int text_width = strlen(app->rds_buffer2A) * 6;
+    
+    // Рисуем бегущую строку
+    draw_scrolling_text(canvas, app->rds_buffer2A, text_width, 60, &text_offset);
 }
 
 #if 0
