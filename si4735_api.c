@@ -345,6 +345,8 @@ uint8_t si4734_ssb_patch_mode(const uint8_t *patch){
 }
 
 uint8_t si4734_fm_set_freq(uint16_t freq_10khz){
+	// ID_printed = false;
+	PTy_printed = false;
 	uint8_t fast,freq_h,freq_l,status,tray=0;
 	fast=0;
 	freq_h=freq_10khz>>8;
