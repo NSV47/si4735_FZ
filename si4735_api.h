@@ -23,6 +23,14 @@ typedef enum {
     TOTAL_SWITCHING_MODES = 3,
 } SwitchingModes;
 
+typedef enum {
+    KHz100,
+    KHz1000,
+    KHz10000,
+    // SYNC_MODE,
+    TOTAL_COEF_MODES = 3,
+} CoefModes;
+
 struct si4735App {
     Gui* gui;
     ViewPort* view_port;
@@ -30,6 +38,7 @@ struct si4735App {
 
     // DrawMode draw_mode;
     SwitchingModes switching_mode;
+    CoefModes coef_mode;
 
     const GpioPin* output_pin;
     const GpioPin* SHND_pin;

@@ -32,7 +32,7 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     snprintf(string, 10, "%d", app->freq_khz * app->multiplier_freq); // app->freq_khz // app->multiplier_freq
     // FURI_LOG_I(TAG, string);
     canvas_set_font(canvas, FontBigNumbers);
-    canvas_draw_str(canvas, 35, 49, string);
+    canvas_draw_str(canvas, 35, 54, string); // 35 49
     // elements_multiline_text_aligned(canvas, 45, 38, AlignRight, AlignTop, string);
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 110, 49, "kHz");
@@ -45,7 +45,14 @@ static void si4735_app_draw_callback(Canvas* canvas, void* ctx) {
     // snprintf(string, 30, "status x%x %dKHz   ", app->status, app->coef * app->n);
     snprintf(string, 30, "x%x", app->status);
     canvas_draw_str(canvas, 2, 42, string); // 4, 36
-    snprintf(string, 30, "%dKHz   ", app->coef * app->n);
+    if(app->coef * app->n * 10 == 100){
+        snprintf(string, 30, "%dKHz   ", app->coef * app->n * 10);
+    }else if(app->coef * app->n * 10 == 1000){
+        snprintf(string, 30, "%dMHz   ", app->coef * app->n * 10 / 1000);
+    }else if(app->coef * app->n * 10 == 10000){
+        snprintf(string, 30, "%dMHz   ", app->coef * app->n * 10 / 1000);
+    }
+    
     canvas_draw_str(canvas, 2, 50, string); // 4, 36
 
     canvas_draw_str(canvas, 2, 9, app->PTy_buffer);
@@ -190,7 +197,7 @@ int32_t si4735_app(void *p) {
     si4734_reset(app);
     for(uint32_t i=0;i<0x5ff;i++)__asm__("nop");
     // si4734_fm_mode(); // просто запускает кварц
-    reciver_set_mode(app, __SSB_MODE); // __SSB_MODE // __FM_MODE // AM_MODE
+    reciver_set_mode(app, __FM_MODE); // __SSB_MODE // __FM_MODE // AM_MODE
 
     furi_hal_gpio_write(app->SHND_pin, true);
 
@@ -264,6 +271,14 @@ int32_t si4735_app(void *p) {
             old_bfo=bfo;
         }
 
+        if(app->coef_mode == 0){
+            app->coef = 1;
+        }else if(app->coef_mode == 1){
+            app->coef = 10;
+        }else if(app->coef_mode == 2){
+            app->coef = 100;
+        }
+
     #if 1
         // Выбираем событие из очереди в переменную event (ждем бесконечно долго, если очередь пуста)
         // и проверяем, что у нас получилось это сделать
@@ -290,14 +305,22 @@ int32_t si4735_app(void *p) {
                     app->mute_value = !app->mute_value;
                     furi_hal_gpio_write(app->mute_pin, app->mute_value);
                 }else if(event.key == InputKeyRight){ // .input
-                    app->freq_khz++;
+                    // app->freq_khz++; // увеличивает частоту на 10 КГц
+                    // app->freq_khz+=(app->coef * app->n); // увеличивает частоту на 10 КГц // перенесу в событие при отжатии
+                    // app->freq_khz+=100; // увеличивает частоту на 1 МГц
+                    // app->freq_khz+=10; // увеличивает частоту на 100 КГц
                     // PTy_printed = false;
                 }else if(event.key == InputKeyLeft){ // .input
-                    app->freq_khz--;
+                    // app->freq_khz--;
+                    // app->freq_khz-=100;
+                    // app->freq_khz-=10;
+                    // app->freq_khz-=(app->coef * app->n); // перенесу в событие при отжатии
                 }
+        
             // Наше событие — это сработавший таймер
             }else if(event.type == InputTypeLong){
                 SwitchingModes mode = app->switching_mode;
+                CoefModes coef = app->coef_mode;
                 if (event.key == InputKeyBack){ // .input
                     si4734_powerdown();
                     furi_hal_gpio_write(app->SHND_pin, false);
@@ -307,13 +330,21 @@ int32_t si4735_app(void *p) {
                     app->switching_mode = (mode - 1 + TOTAL_SWITCHING_MODES) % TOTAL_SWITCHING_MODES;
                     reciver_set_mode(app, app->switching_mode);
                 }else if (event.key == InputKeyRight){
-                    reciver_next_step(app);
+                    // reciver_next_step(app);
+                    // app->n = 100; // устанавливается в 10 при вызове функции в api
+                    // app->coef = 100; // лучше менять coef
+                    app->coef_mode = (coef - 1 + TOTAL_COEF_MODES) % TOTAL_COEF_MODES;
                 }
             }else if(event.type == InputTypeRelease){
                 if (event.key == InputKeyBack){ // .input
                     // si4734_powerdown();
                     // si4735_app_free(app);
                     break;
+                }
+                else if(event.key == InputKeyRight){
+                    app->freq_khz+=(app->coef * app->n); // увеличивает частоту на 10 КГц // перенесу в событие при отжатии
+                }else if(event.key == InputKeyLeft){
+                    app->freq_khz-=(app->coef * app->n); // перенесу в событие при отжатии
                 }
             }
             #if 0 
