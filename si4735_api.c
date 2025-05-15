@@ -190,7 +190,7 @@ uint8_t si4734_set_prop(uint16_t prop, uint16_t val){
 }
 
 void reciver_set_mode(si4735App* app, uint8_t rec_mod){
-	static uint16_t amfreq=8432,fmfreq=9920;//запоминаем старое значение // 8910
+	static uint16_t amfreq=602,fmfreq=9920, ssbfreq=4996;//запоминаем старое значение // 8910
 	
 	si4734_powerdown();
 								//частоты
@@ -259,7 +259,7 @@ void reciver_set_mode(si4735App* app, uint8_t rec_mod){
 		MIN_LIMIT=200;
 		MAX_LIMIT=30000;
 		//encoder=7100;
-		app->freq_khz=amfreq; // app->freq_khz // encoder
+		app->freq_khz=ssbfreq; // app->freq_khz // encoder
 		si4734_ssb_set_freq(app->freq_khz);
 		coef=1;
 		app->coef=coef;
